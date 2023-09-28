@@ -1,0 +1,19 @@
+{
+  "name": "gas",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "clasp": "clasp",
+    "login": "clasp login",
+    "pull": "clasp pull",
+    "push": "clasp push",
+    "deploy": "clasp deploy"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/clasp": "^2.4.2",
+    "gh-pages": "^6.0.0"
+  }
+}
