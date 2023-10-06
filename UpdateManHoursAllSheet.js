@@ -15,6 +15,7 @@ function updateManHoursAllSheetMain() {
   const SCENE_TITLE_COLUMN = 1;
   const SCENE_START_BODY_ROW_NUM = 7;
   const SCENE_START_BODY_COLUMN_NUM = 1;
+  const SCENE_END_BODY_ROW_NUM = 60; //適当な値
   const SCENE_END_BODY_COLUMN_NUM = 17;
   const SCENE_START_MANHOUR_COLUMN_NUM = 21;
   const SCENE_END_MANHOUR_COLUMN_NUM = 170;
@@ -23,10 +24,16 @@ function updateManHoursAllSheetMain() {
   //全工数表
   //全工数表シート名
   const MANHOUR_ALL_SHEET_NAME = "全工数表";
-  //タスク描画開始地点
+  //描画開始地点
   const MANHOUR_ALL_START_ROW_NUM = 4;
   const MANHOUR_ALL_START_COLUMN_NUM = 1;
-  const SMANHOUR_ALL_START_BODY_COLUMN_NUM = 2;
+  //タスク描画終了地点
+  const MANHOUR_ALL_BODY_COLUMN_NUM = 18;
+  // ボーダー点線位置
+  const BORDER_DOTTED_START1 = 9;
+  const BORDER_DOTTED_END1 = 10;
+  const BORDER_DOTTED_START2 = 13;
+  const BORDER_DOTTED_END2 = 14;
 
   //-----------------
   //関数
@@ -59,12 +66,16 @@ function updateManHoursAllSheetMain() {
   //-----------------
   // 進行表のデータを全工数表にコピーする
   function setManhour(progress_sheets, manhour_all_sheet) {
+    // 全工数表のデータを全て取得
+    const allDataRange = manhour_all_sheet.getDataRange();
+    // 値をを取得
+    const manhourAllValues = allDataRange.getValues();
     // クリア行範囲：データ最終行 - ヘッダ行 + 1
     const clearRowRange =
-      manhour_all_sheet.getLastRow() - MANHOUR_ALL_START_ROW_NUM + 1;
+      manhourAllValues.length - MANHOUR_ALL_START_ROW_NUM + 1;
     // クリア列範囲：開始日列 - 開始列 + 1
     const clearColumnRange =
-      manhour_all_sheet.getLastColumn() - MANHOUR_ALL_START_COLUMN_NUM + 1;
+      manhourAllValues[0].length - MANHOUR_ALL_START_COLUMN_NUM + 1;
     // シートのクリア
     if (clearRowRange > 0) {
       manhour_all_sheet
@@ -76,73 +87,148 @@ function updateManHoursAllSheetMain() {
         )
         .clear();
     }
-    // コピー先開始行　forEach内で+ 1で計算するため - 1調整
-    let paste_endRow = MANHOUR_ALL_START_ROW_NUM - 1;
+    // コピー先変数
+    let pasteVal = [];
+    let pasteBg = [];
     progress_sheets.forEach((progress_sheet) => {
-      let progressRowRange = 0;
-      try {
-        // コピー行範囲：B列（シーン名）データのヘッダ行以降のデータ最終行 - ヘッダ行 + 1
-        progressRowRange =
-          progress_sheet
-            .getRange(SCENE_START_BODY_ROW_NUM, SCENENAME_COLUMN_NUM)
-            .getNextDataCell(SpreadsheetApp.Direction.DOWN)
-            .getRow() -
-          SCENE_START_BODY_ROW_NUM +
-          1;
-      } catch (err) {
-        return;
-      }
+      // 進行表のデータを取得
+      const progressDataRange = progress_sheet.getRange(
+        SCENE_TITLE_ROW_NUM,
+        SCENE_TITLE_COLUMN,
+        SCENE_END_BODY_ROW_NUM - SCENE_TITLE_ROW_NUM + 1,
+        SCENE_END_MANHOUR_COLUMN_NUM - SCENE_TITLE_ROW_NUM + 1
+      );
+      // 値・背景色をを取得
+      const progressAllValues = progressDataRange.getValues();
+      const progressAllBackGrounds = progressDataRange.getBackgrounds();
+
+      // コピー行範囲：B列（シーン名）データのヘッダ行以降のデータ最終行
+      const progressRowIndex = progressAllValues.findIndex(
+        (data, index) =>
+          data[SCENENAME_COLUMN_NUM - 1] === "" &&
+          index >= SCENE_START_BODY_ROW_NUM - 1
+      );
+      const progressRowRange = progressRowIndex - SCENE_START_BODY_ROW_NUM + 1;
+
       if (progressRowRange == 0) return;
 
-      // コピー列範囲：開始日列 - 開始列 + 1
-      const progressBodyColumnRange =
-        SCENE_END_BODY_COLUMN_NUM - SCENE_START_BODY_COLUMN_NUM + 1;
-
       // シーン備考～開始日のコピー
-      let copyRange = progress_sheet.getRange(
-        SCENE_START_BODY_ROW_NUM,
-        SCENE_START_BODY_COLUMN_NUM,
-        progressRowRange,
-        progressBodyColumnRange
-      );
-      let pasteRange = manhour_all_sheet.getRange(
-        paste_endRow + 1,
-        SMANHOUR_ALL_START_BODY_COLUMN_NUM,
-        progressRowRange,
-        progressBodyColumnRange
-      );
-      copyRange.copyTo(pasteRange);
+      const copyValSheen = progressAllValues
+        .slice(SCENE_START_BODY_ROW_NUM - 1, progressRowIndex)
+        .map((dataRow) => {
+          return dataRow.slice(
+            SCENE_START_BODY_COLUMN_NUM - 1,
+            SCENE_END_BODY_COLUMN_NUM
+          );
+        });
+      const copyBgSheen = progressAllBackGrounds
+        .slice(SCENE_START_BODY_ROW_NUM - 1, progressRowIndex)
+        .map((dataRow) => {
+          return dataRow.slice(
+            SCENE_START_BODY_COLUMN_NUM - 1,
+            SCENE_END_BODY_COLUMN_NUM
+          );
+        });
 
       // 工数のコピー
-      copyRange = progress_sheet.getRange(
-        SCENE_START_BODY_ROW_NUM,
-        SCENE_START_MANHOUR_COLUMN_NUM,
-        progressRowRange,
-        SCENE_END_MANHOUR_COLUMN_NUM - SCENE_START_MANHOUR_COLUMN_NUM + 1
-      );
-      pasteRange = manhour_all_sheet.getRange(
-        paste_endRow + 1,
-        SMANHOUR_ALL_START_BODY_COLUMN_NUM + progressBodyColumnRange,
-        progressRowRange,
-        SCENE_END_MANHOUR_COLUMN_NUM - SCENE_START_MANHOUR_COLUMN_NUM + 1
-      );
-      copyRange.copyTo(pasteRange);
+      const copyValManHour = progressAllValues
+        .slice(SCENE_START_BODY_ROW_NUM - 1, progressRowIndex)
+        .map((dataRow) => {
+          return dataRow.slice(
+            SCENE_START_MANHOUR_COLUMN_NUM - 1,
+            SCENE_END_MANHOUR_COLUMN_NUM
+          );
+        });
+      const copyBgManHour = progressAllBackGrounds
+        .slice(SCENE_START_BODY_ROW_NUM - 1, progressRowIndex)
+        .map((dataRow) => {
+          return dataRow.slice(
+            SCENE_START_MANHOUR_COLUMN_NUM - 1,
+            SCENE_END_MANHOUR_COLUMN_NUM
+          );
+        });
 
-      // 作品話数のコピー
-      copyRange = progress_sheet.getRange(
-        SCENE_TITLE_ROW_NUM,
-        SCENE_TITLE_COLUMN
+      // 作品話数の列範囲分コピー
+      const copyValTitle = Array(progressRowRange).fill(
+        progressAllValues[SCENE_TITLE_ROW_NUM - 1][SCENE_TITLE_COLUMN - 1]
       );
-      pasteRange = manhour_all_sheet.getRange(
-        paste_endRow + 1,
-        MANHOUR_ALL_START_COLUMN_NUM,
-        progressRowRange,
-        1
+      const copyBgTitle = Array(progressRowRange).fill(
+        progressAllBackGrounds[SCENE_TITLE_ROW_NUM - 1][SCENE_TITLE_COLUMN - 1]
       );
-      copyRange.copyTo(pasteRange);
-      pasteRange.setFontWeight("normal").setFontSize(10);
 
-      paste_endRow += progressRowRange;
+      // 各コピー範囲を結合して格納
+      pasteVal.push(
+        ...copyValTitle.map((title, index) => {
+          const row = [title];
+          row.push(...copyValSheen[index], ...copyValManHour[index]);
+          return row;
+        })
+      );
+      pasteBg.push(
+        ...copyBgTitle.map((title, index) => {
+          const row = [title];
+          row.push(...copyBgSheen[index], ...copyBgManHour[index]);
+          return row;
+        })
+      );
     });
+
+    // 貼り付け範囲取得
+    const pastDataRange = manhour_all_sheet.getRange(
+      MANHOUR_ALL_START_ROW_NUM,
+      MANHOUR_ALL_START_COLUMN_NUM,
+      pasteVal.length,
+      pasteVal[0].length
+    );
+
+    // 書式・入力規則を貼り付け範囲に適応（一行目をコピー）
+    pastDataRange.offset(0, 0, 1, pasteVal[0].length).copyTo(pastDataRange);
+    // 値・背景色
+    pastDataRange.setValues(pasteVal);
+    pastDataRange.setBackgrounds(pasteBg);
+    // 罫線
+    let boderDataRange = manhour_all_sheet.getRange(
+      MANHOUR_ALL_START_ROW_NUM,
+      MANHOUR_ALL_START_COLUMN_NUM,
+      pasteVal.length,
+      MANHOUR_ALL_BODY_COLUMN_NUM - MANHOUR_ALL_START_COLUMN_NUM + 1
+    );
+    boderDataRange.setBorder(true, true, true, true, true, true);
+
+    // 罫線-点線1
+    boderDataRange = manhour_all_sheet.getRange(
+      MANHOUR_ALL_START_ROW_NUM,
+      BORDER_DOTTED_START1,
+      pasteVal.length,
+      BORDER_DOTTED_END1 - BORDER_DOTTED_START1 + 1
+    );
+    boderDataRange.setBorder(
+      null,
+      true,
+      null,
+      true,
+      null,
+      null,
+      null,
+      SpreadsheetApp.BorderStyle.DASHED
+    );
+
+    // 罫線-点線2
+    boderDataRange = manhour_all_sheet.getRange(
+      MANHOUR_ALL_START_ROW_NUM,
+      BORDER_DOTTED_START2,
+      pasteVal.length,
+      BORDER_DOTTED_END2 - BORDER_DOTTED_START2 + 1
+    );
+    boderDataRange.setBorder(
+      null,
+      true,
+      null,
+      true,
+      null,
+      null,
+      null,
+      SpreadsheetApp.BorderStyle.DASHED
+    );
   }
 }
