@@ -1,5 +1,5 @@
 function updateManHoursAllSheetMain() {
-  updateManHoursAllSheet();
+  exclusiveMain(updateManHoursAllSheet);
 }
 
 {
@@ -27,6 +27,7 @@ function updateManHoursAllSheetMain() {
   //描画開始地点
   const MANHOUR_ALL_START_ROW_NUM = 4;
   const MANHOUR_ALL_START_COLUMN_NUM = 1;
+  const MANHOUR_ALL_IGNORE_KEYWORD = "_";
   //タスク描画終了地点
   const MANHOUR_ALL_BODY_COLUMN_NUM = 18;
   // ボーダー点線位置
@@ -112,47 +113,59 @@ function updateManHoursAllSheetMain() {
 
       if (progressRowRange == 0) return;
 
+      // 行切り抜き ’_’始まりを除外
+      const copyVal = progressAllValues
+        .slice(SCENE_START_BODY_ROW_NUM - 1, progressRowIndex)
+        .filter(
+          (dataRow) =>
+            !String(dataRow[SCENENAME_COLUMN_NUM - 1]).startsWith(
+              MANHOUR_ALL_IGNORE_KEYWORD
+            )
+        );
+      const copyBg = progressAllBackGrounds
+        .slice(SCENE_START_BODY_ROW_NUM - 1, progressRowIndex)
+        .filter(
+          (dataRow, index) =>
+            !String(
+              progressAllValues[index + SCENE_START_BODY_ROW_NUM - 1][
+                SCENENAME_COLUMN_NUM - 1
+              ]
+            ).startsWith(MANHOUR_ALL_IGNORE_KEYWORD)
+        );
+
       // シーン備考～開始日のコピー
-      const copyValSheen = progressAllValues
-        .slice(SCENE_START_BODY_ROW_NUM - 1, progressRowIndex)
-        .map((dataRow) => {
-          return dataRow.slice(
-            SCENE_START_BODY_COLUMN_NUM - 1,
-            SCENE_END_BODY_COLUMN_NUM
-          );
-        });
-      const copyBgSheen = progressAllBackGrounds
-        .slice(SCENE_START_BODY_ROW_NUM - 1, progressRowIndex)
-        .map((dataRow) => {
-          return dataRow.slice(
-            SCENE_START_BODY_COLUMN_NUM - 1,
-            SCENE_END_BODY_COLUMN_NUM
-          );
-        });
+      const copyValSheen = copyVal.map((dataRow) => {
+        return dataRow.slice(
+          SCENE_START_BODY_COLUMN_NUM - 1,
+          SCENE_END_BODY_COLUMN_NUM
+        );
+      });
+      const copyBgSheen = copyBg.map((dataRow) => {
+        return dataRow.slice(
+          SCENE_START_BODY_COLUMN_NUM - 1,
+          SCENE_END_BODY_COLUMN_NUM
+        );
+      });
 
       // 工数のコピー
-      const copyValManHour = progressAllValues
-        .slice(SCENE_START_BODY_ROW_NUM - 1, progressRowIndex)
-        .map((dataRow) => {
-          return dataRow.slice(
-            SCENE_START_MANHOUR_COLUMN_NUM - 1,
-            SCENE_END_MANHOUR_COLUMN_NUM
-          );
-        });
-      const copyBgManHour = progressAllBackGrounds
-        .slice(SCENE_START_BODY_ROW_NUM - 1, progressRowIndex)
-        .map((dataRow) => {
-          return dataRow.slice(
-            SCENE_START_MANHOUR_COLUMN_NUM - 1,
-            SCENE_END_MANHOUR_COLUMN_NUM
-          );
-        });
+      const copyValManHour = copyVal.map((dataRow) => {
+        return dataRow.slice(
+          SCENE_START_MANHOUR_COLUMN_NUM - 1,
+          SCENE_END_MANHOUR_COLUMN_NUM
+        );
+      });
+      const copyBgManHour = copyBg.map((dataRow) => {
+        return dataRow.slice(
+          SCENE_START_MANHOUR_COLUMN_NUM - 1,
+          SCENE_END_MANHOUR_COLUMN_NUM
+        );
+      });
 
       // 作品話数の列範囲分コピー
-      const copyValTitle = Array(progressRowRange).fill(
+      const copyValTitle = Array(copyVal.length).fill(
         progressAllValues[SCENE_TITLE_ROW_NUM - 1][SCENE_TITLE_COLUMN - 1]
       );
-      const copyBgTitle = Array(progressRowRange).fill(
+      const copyBgTitle = Array(copyBg.length).fill(
         progressAllBackGrounds[SCENE_TITLE_ROW_NUM - 1][SCENE_TITLE_COLUMN - 1]
       );
 

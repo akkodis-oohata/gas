@@ -1,5 +1,5 @@
 function updateScheduleSheetMain() {
-  updateScheduleSheet();
+  exclusiveMain(updateScheduleSheet);
 }
 
 function generateCalendarMain() {
