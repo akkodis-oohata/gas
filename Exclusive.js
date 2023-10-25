@@ -1,3 +1,4 @@
+// 排他制御
 function exclusiveMain(callback) {
   let lock = LockService.getDocumentLock();
   lock.tryLock(0);
@@ -14,6 +15,19 @@ function exclusiveMain(callback) {
 
     unProtectSheet(sheets); // シート保護解除
     lock.releaseLock(); //ロックを解除
+  } else {
+    Browser.msgBox("他の処理が実行中です");
+  }
+}
+
+// 排他チェック
+function exclusiveCheck(callback) {
+  let lock = LockService.getDocumentLock();
+  lock.tryLock(0);
+  if (lock.hasLock()) {
+    lock.releaseLock(); //ロックを解除
+    // 処理実行
+    callback();
   } else {
     Browser.msgBox("他の処理が実行中です");
   }

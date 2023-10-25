@@ -91,6 +91,7 @@ function updateManHoursAllSheetMain() {
     // コピー先変数
     let pasteVal = [];
     let pasteBg = [];
+    let pasteColor = [[]];
     progress_sheets.forEach((progress_sheet) => {
       // 進行表のデータを取得
       const progressDataRange = progress_sheet.getRange(
@@ -102,6 +103,7 @@ function updateManHoursAllSheetMain() {
       // 値・背景色をを取得
       const progressAllValues = progressDataRange.getValues();
       const progressAllBackGrounds = progressDataRange.getBackgrounds();
+      const titleFontColor = progressDataRange.getFontColorObject();
 
       // コピー行範囲：B列（シーン名）データのヘッダ行以降のデータ最終行
       const progressRowIndex = progressAllValues.findIndex(
@@ -168,6 +170,7 @@ function updateManHoursAllSheetMain() {
       const copyBgTitle = Array(copyBg.length).fill(
         progressAllBackGrounds[SCENE_TITLE_ROW_NUM - 1][SCENE_TITLE_COLUMN - 1]
       );
+      const copyColorTitle = Array(copyVal.length).fill([titleFontColor]);
 
       // 各コピー範囲を結合して格納
       pasteVal.push(
@@ -184,6 +187,7 @@ function updateManHoursAllSheetMain() {
           return row;
         })
       );
+      pasteColor.push(...copyColorTitle);
     });
 
     // 貼り付け範囲取得
@@ -243,5 +247,13 @@ function updateManHoursAllSheetMain() {
       null,
       SpreadsheetApp.BorderStyle.DASHED
     );
+    // タイトルフォント色
+    boderDataRange = manhour_all_sheet.getRange(
+      MANHOUR_ALL_START_ROW_NUM,
+      MANHOUR_ALL_START_COLUMN_NUM,
+      pasteVal.length,
+      1
+    );
+    boderDataRange.setFontColorObjects(pasteColor);
   }
 }
