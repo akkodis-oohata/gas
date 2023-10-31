@@ -4,9 +4,9 @@ function exclusiveMain(callback) {
   lock.tryLock(0);
   if (lock.hasLock()) {
     // スプレッドシートの読み込み
-    // let spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    let spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     // シート読み込み
-    // const sheets = spreadsheet.getSheets();
+    const sheets = spreadsheet.getSheets();
 
     //protectSheet(sheets); // シート保護
 

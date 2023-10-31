@@ -1,5 +1,6 @@
 function updateScheduleSheetMain() {
-  updateScheduleSheet();
+  updateScheduleSheet(); 
+  
 }
 
 function generateCalendarMain() {
@@ -24,8 +25,6 @@ function updateScheduleSheetDeadline() {
       this.storyName = undefined;
       //作品話数色
       this.storyColor = undefined;
-      //作品話数文字色
-      this.storyFontColor = undefined;
       //担当者
       this.persons = [];
       //最小の開始日(カレンダー生成はマニュアルで事前にボタン押すのでここ不要)
@@ -65,9 +64,9 @@ function updateScheduleSheetDeadline() {
   //締切一覧表シート名
   const DEADLINE_SHEET_NAME = "締切一覧表";
   //セルの色塗り初期化時の色
-  const COLOR_CLEAR = "#ffffff";
+  //const COLOR_CLEAR = "#ffffff";
   // 土日祝日の色
-  const COLOR_HOLIDAY = "#808080";
+  //const COLOR_HOLIDAY = "#808080";
   // 締め切りの色
   const COLOR_DEADLINE = "#FF0000";
 
@@ -109,9 +108,9 @@ function updateScheduleSheetDeadline() {
 
   //カレンダー
   const SS_CALENDERDATE_ROW_INDEX = 6;
-  const SS_CALENDERDATE_COLUMN_INDEX = 7;
+  //const SS_CALENDERDATE_COLUMN_INDEX = 7;
   //表示最大日数
-  const SS_MAXDAYS = 730; //730(24か月)
+  //const SS_MAXDAYS = 730; //730(24か月)
   //担当者
   const SS_PRSRON_COLUMN_INDEX = 6;
   const SS_PERSON_ROW_START_INDEX = 7;
@@ -123,7 +122,7 @@ function updateScheduleSheetDeadline() {
   //カレンダー生成時前にクリアする領域（適当な値）//TODO
   const SS_CLEAR_ROW_LENGTH = 54;
   // データベースとスケジュール表のフォーマットの差を埋める為、美術ルーム全体スケジュールmemoの行数分+CLW美術作業者一覧分-以下データスペース-作業者ベースデータで算出する
-  const DATA_BASE_FORMAT_OFFSET = 5;
+  //const DATA_BASE_FORMAT_OFFSET = 5;
 
   //エラーメッセージ
   const ERROR_MESSAGE_FULL = `メモ欄が6行全て埋まっています`;
@@ -135,21 +134,22 @@ function updateScheduleSheetDeadline() {
   // フリースペース開始位置
   const SS_FREE_SPACE = "以下フリースぺース";
 
-  const DATA_BASE_SHEET_NAME = "データベース";
+  //const DATA_BASE_SHEET_NAME = "データベース"
+
 
   //-----------------
   //変数
   //-----------------
   // スプレッドシート上でデータが入力されている最大範囲を選択
-  let scheduleSheetAllRange = undefined;
+  //let scheduleSheetAllRange = undefined;
   //スケジュール表の全値取得
-  let scheduleSheetDataValues = undefined;
+  //let scheduleSheetDataValues = undefined;
   //スケジュール表の背景色取得
-  let scheduleSheetAllBackGrounds = undefined;
+  //let scheduleSheetAllBackGrounds = undefined;
   // データベースシートの最大範囲
-  let dataBaseSheetAllRange = undefined;
+  //let dataBaseSheetAllRange = undefined;
   // データベースシートに格納する為、データ領域を格納する配列
-  let dataBaseSheetDataValues = undefined;
+  //let dataBaseSheetDataValues = undefined;
   // 「以下フリースペース」が一列目に書いてある行
   let freeSpaceRowIndex = undefined;
 
@@ -189,15 +189,15 @@ function updateScheduleSheetDeadline() {
     //getScheduleSheetInfo(scheduleSheet);
 
     //スケジュール表のデータスペース（作品話数ベースデータ）へ反映を先に行う。
-    updateDataSpaceMain(scheduleSheet);
+    updateDataSpaceMain(scheduleSheet)
 
     // スケジュール表情報取得(データスペース反映後)
-    getScheduleSheetInfo(scheduleSheet, dataBaseSheet);
+    getScheduleSheetInfoC(scheduleSheet,dataBaseSheet);
 
     // スケジュール表情報を進行表の値で更新
     updateDateValues(storyInfo);
     // 更新したスケジュール表情報で画面更新
-    updateScheduleSheetWithDataValues();
+    updateScheduleSheetWithDataValuesC();
 
     // スケジュール表をActiveにする
     scheduleSheet.activate();
@@ -222,7 +222,7 @@ function updateScheduleSheetDeadline() {
     let dataBaseSheet = spreadsheet.getSheetByName(DATA_BASE_SHEET_NAME);
 
     // スケジュール表情報取得
-    getScheduleSheetInfo(scheduleSheet, dataBaseSheet);
+    getScheduleSheetInfoC(scheduleSheet,dataBaseSheet);
 
     //カレンダー日付設定
     setCallendarDate();
@@ -302,16 +302,17 @@ function updateScheduleSheetDeadline() {
       }
     }
 
-    updateScheduleSheetWithDataValues();
+    updateScheduleSheetWithDataValuesC();
   }
   //カレンダー生成↑
 
   //スケジュール表の画面を更新する
-  function updateScheduleSheetWithDataValues() {
-    scheduleSheetAllRange.setValues(scheduleSheetDataValues);
-    scheduleSheetAllRange.setBackgrounds(scheduleSheetAllBackGrounds);
-    dataBaseSheetAllRange.setValues(dataBaseSheetDataValues);
-  }
+  // function updateScheduleSheetWithDataValues() {
+  //   scheduleSheetAllRange.setValues(scheduleSheetDataValues);
+  //   scheduleSheetAllRange.setBackgrounds(scheduleSheetAllBackGrounds);
+  //   dataBaseSheetAllRange.setValues(dataBaseSheetDataValues);
+    
+  // }
   // スケジュール表情報を進行表の値で更新
   function updateDateValues(storyInfo) {
     // 「以下フリースペース」が一列目に書いてある行を取得
@@ -349,22 +350,19 @@ function updateScheduleSheetDeadline() {
       if (!scene.replaceScene) {
         continue;
       }
-      let sceneTitle = storyInfo.storyName + DELIMITER + scene.sceneName;
+      let sceneTitle = storyInfo.storyName + DELIMITER + scene.sceneName; 
       for (
         let i = SS_CALENDERDATE_COLUMN_INDEX;
         i < SS_CALENDERDATE_COLUMN_INDEX + SS_MAXDAYS;
         i++
       ) {
-        let tmpSceneTitle =
-          dataBaseSheetDataValues[rowIndex - DATA_BASE_FORMAT_OFFSET][i]; //TODO:dataBaseとスケジュール表はデータ行が合わないので調整要
-        if (tmpSceneTitle && tmpSceneTitle.startsWith(sceneTitle)) {
-          // startsWithメソッドを使用してチェック
+        let tmpSceneTitle = dataBaseSheetDataValues[rowIndex - DATA_BASE_FORMAT_OFFSET][i];  //TODO:dataBaseとスケジュール表はデータ行が合わないので調整要
+        if (tmpSceneTitle && tmpSceneTitle.startsWith(sceneTitle)) {  // startsWithメソッドを使用してチェック
           // セルの内容をクリア
           scheduleSheetDataValues[rowIndex][i] = "";
           scheduleSheetDataValues[rowIndex + 1][i] = "";
           dataBaseSheetDataValues[rowIndex - DATA_BASE_FORMAT_OFFSET][i] = "";
-          dataBaseSheetDataValues[rowIndex + 1 - DATA_BASE_FORMAT_OFFSET][i] =
-            "";
+          dataBaseSheetDataValues[rowIndex + 1 - DATA_BASE_FORMAT_OFFSET][i] = "";
           // セルの背景色をクリア
           scheduleSheetAllBackGrounds[rowIndex][i] = COLOR_CLEAR;
           scheduleSheetAllBackGrounds[rowIndex + 1][i] = COLOR_CLEAR;
@@ -372,6 +370,7 @@ function updateScheduleSheetDeadline() {
       }
     }
   }
+  
 
   // 対象の担当者のシーン情報を更新する
   function updatePersonTasks(storyInfo, person, rowIndex) {
@@ -402,11 +401,12 @@ function updateScheduleSheetDeadline() {
 
       // 開始日から総工数（日）だけセルに色を塗る
       if (scene.totalDays > 0) {
-        let sceneTitle = storyInfo.storyName + DELIMITER + scene.sceneName;
+        
+        let sceneTitle = storyInfo.storyName + DELIMITER + scene.sceneName + DELIMITER + "日分" + DELIMITER + formatDate(scene.startDate);
         for (let i = 0; i < scene.totalDays; i++) {
           let checkColumnIndex = startColumnIndex + i;
           if (scene.warikomi) {
-            moveCell(
+            moveCellC(
               rowIndex,
               checkColumnIndex,
               storyInfo.storyColor,
@@ -415,7 +415,7 @@ function updateScheduleSheetDeadline() {
             );
           } else {
             while (
-              !findAndFillClearCell(
+              !findAndFillClearCellC(
                 rowIndex,
                 checkColumnIndex,
                 storyInfo.storyColor,
@@ -430,117 +430,126 @@ function updateScheduleSheetDeadline() {
       }
 
       //先頭セルにシーン名を表示する
-      displaySceneName(rowIndex);
+      displaySceneNameC(rowIndex);
+    }
+    // yyyy-mm-ddの形に変換
+    function formatDate(date) {
+      // dateがDateオブジェクトであることを確認
+      if (!(date instanceof Date)) {
+        date = new Date(date);
+      }
+    
+      let year = date.getFullYear();
+      let month = (date.getMonth() + 1).toString().padStart(2, '0');  // 月は0から始まるため、1を加えます
+      let day = date.getDate().toString().padStart(2, '0');
+    
+      return `${year}-${month}-${day}`;
     }
   }
 
   //先頭セルにシーン名を表示する
-  function displaySceneName(rowIndex) {
-    let prevSceneTitle = "";
-    for (
-      let columnIndex = SS_CALENDERDATE_COLUMN_INDEX;
-      columnIndex < SS_CALENDERDATE_COLUMN_INDEX + SS_MAXDAYS;
-      columnIndex++
-    ) {
-      let sceneTitle =
-        dataBaseSheetDataValues[rowIndex - DATA_BASE_FORMAT_OFFSET][
-          columnIndex
-        ];
-      if (sceneTitle != prevSceneTitle) {
-        scheduleSheetDataValues[rowIndex][columnIndex] = sceneTitle;
-      }
-      prevSceneTitle = sceneTitle;
-    }
-  }
+  // function displaySceneName(rowIndex) {
+  //   let prevSceneTitle = "";
+  //   for (
+  //     let columnIndex = SS_CALENDERDATE_COLUMN_INDEX;
+  //     columnIndex < SS_CALENDERDATE_COLUMN_INDEX + SS_MAXDAYS;
+  //     columnIndex++
+  //   ) {
+  //     let sceneTitle =
+  //       dataBaseSheetDataValues[rowIndex - DATA_BASE_FORMAT_OFFSET][columnIndex];
+  //     if (sceneTitle != prevSceneTitle) {
+  //       scheduleSheetDataValues[rowIndex][columnIndex] = sceneTitle;
+  //     }
+  //     prevSceneTitle = sceneTitle;
+  //   }
+  // }
 
-  //セルを隣に移動 //TODO:共通の切り出しとしてつかるか検討
-  function moveCell(rowIndex, index, existColor, sceneTitle, manHourColor) {
-    let nextExistColor = scheduleSheetAllBackGrounds[rowIndex][index];
-    //土日祝日だけ割り込み禁止
-    if (nextExistColor == COLOR_HOLIDAY) {
-      index++;
-      moveCell(rowIndex, index, existColor, sceneTitle, manHourColor);
-      return;
-    }
-    let nextSceneTitle = undefined;
-    let nextDataBaseSceneTitle = undefined;
-    if (nextExistColor != COLOR_CLEAR) {
-      nextSceneTitle = scheduleSheetDataValues[rowIndex][index];
-
-      nextDataBaseSceneTitle = scheduleSheetDataValues[rowIndex][index];
-    }
-    setSell(rowIndex, index, existColor, sceneTitle, manHourColor);
-    if (nextExistColor != COLOR_CLEAR) {
-      index++;
-      if (nextSceneTitle != undefined && nextSceneTitle != "") {
-        moveCell(rowIndex, index, nextExistColor, nextSceneTitle, manHourColor);
-      } else {
-        moveCell(
-          rowIndex,
-          index,
-          nextExistColor,
-          nextDataBaseSceneTitle,
-          manHourColor
-        );
-      }
-    }
-  }
+  // //セルを隣に移動 //TODO:共通の切り出しとしてつかるか検討
+  // function moveCell(rowIndex, index, existColor, sceneTitle, manHourColor) {
+  //   let nextExistColor = scheduleSheetAllBackGrounds[rowIndex][index];
+  //   //土日祝日だけ割り込み禁止
+  //   if (nextExistColor == COLOR_HOLIDAY) {
+  //     index++;
+  //     moveCell(rowIndex, index, existColor, sceneTitle, manHourColor);
+  //     return;
+  //   }
+  //   let nextSceneTitle = undefined;
+  //   let nextManHourColor = undefined;
+  //   let nextDataBaseSceneTitle =undefined;
+  //   if (nextExistColor != COLOR_CLEAR) {
+  //     nextSceneTitle = scheduleSheetDataValues[rowIndex][index];
+  //     nextManHourColor = scheduleSheetAllBackGrounds[rowIndex + 1][index];
+  //     //nextDataBaseSceneTitle = scheduleSheetDataValues[rowIndex][index];
+  //     nextDataBaseSceneTitle = dataBaseSheetDataValues[rowIndex][index];
+      
+  //   }
+  //   setSell(rowIndex, index, existColor, sceneTitle, manHourColor);
+  //   if (nextExistColor != COLOR_CLEAR) {
+  //     index++;
+  //     if (nextSceneTitle != undefined && nextSceneTitle != "") {
+  //       moveCell(rowIndex, index, nextExistColor, nextSceneTitle, nextManHourColor);
+  //     } else {
+  //       moveCell(
+  //         rowIndex,
+  //         index,
+  //         nextExistColor,
+  //         nextDataBaseSceneTitle,
+  //         nextManHourColor
+  //       );
+  //     }
+  //   }
+  // }
 
   // 空白のセルを探して色を塗る
-  function findAndFillClearCell(
-    rowIndex,
-    checkColumnIndex,
-    storyInfoColor,
-    sceneTitle,
-    manHourColor
-  ) {
-    let existColor = scheduleSheetAllBackGrounds[rowIndex][checkColumnIndex];
-    if (existColor != COLOR_CLEAR) {
-      return false;
-    } else {
-      setSell(
-        rowIndex,
-        checkColumnIndex,
-        storyInfoColor,
-        sceneTitle,
-        manHourColor
-      );
-      return true;
-    }
-  }
+  // function findAndFillClearCell(
+  //   rowIndex,
+  //   checkColumnIndex,
+  //   storyInfoColor,
+  //   sceneTitle,
+  //   manHourColor
+  // ) {
+  //   let existColor = scheduleSheetAllBackGrounds[rowIndex][checkColumnIndex];
+  //   if (existColor != COLOR_CLEAR) {
+  //     return false;
+  //   } else {
+  //     setSell(
+  //       rowIndex,
+  //       checkColumnIndex,
+  //       storyInfoColor,
+  //       sceneTitle,
+  //       manHourColor
+  //     );
+  //     return true;
+  //   }
+  // }
 
   //セルに値を設定。表示用シーン名はクリア（後で一気に付ける）
-  function setSell(rowIndex, columnIndex, setColor, sceneTitle, manHourColor) {
-    scheduleSheetDataValues[rowIndex][columnIndex] = "";
-    scheduleSheetAllBackGrounds[rowIndex][columnIndex] = setColor;
-    scheduleSheetAllBackGrounds[rowIndex + 1][columnIndex] = manHourColor;
-    dataBaseSheetDataValues[rowIndex - DATA_BASE_FORMAT_OFFSET][columnIndex] =
-      sceneTitle;
-  }
+  // function setSell(rowIndex, columnIndex, setColor, sceneTitle, manHourColor) {
+  //   scheduleSheetDataValues[rowIndex][columnIndex] = "";
+  //   scheduleSheetAllBackGrounds[rowIndex][columnIndex] = setColor;
+  //   scheduleSheetAllBackGrounds[rowIndex + 1][columnIndex] = manHourColor;
+  //   dataBaseSheetDataValues[rowIndex - DATA_BASE_FORMAT_OFFSET][columnIndex] = sceneTitle;
+  // }
 
-  // スケジュール表情報取得
-  function getScheduleSheetInfo(scheduleSheet, dataBaseSheet) {
-    // スプレッドシート上でデータが入力されている最大範囲を選択
-    scheduleSheetAllRange = scheduleSheet.getDataRange();
-    // 値を取得
-    scheduleSheetDataValues = scheduleSheetAllRange.getValues();
-    // 背景色を取得する
-    scheduleSheetAllBackGrounds = scheduleSheetAllRange.getBackgrounds();
+  // // スケジュール表情報取得
+  // function getScheduleSheetInfo(scheduleSheet,dataBaseSheet) {
+  //   // スプレッドシート上でデータが入力されている最大範囲を選択
+  //   scheduleSheetAllRange = scheduleSheet.getDataRange();
+  //   // 値を取得
+  //   scheduleSheetDataValues = scheduleSheetAllRange.getValues();
+  //   // 背景色を取得する
+  //   scheduleSheetAllBackGrounds = scheduleSheetAllRange.getBackgrounds();
 
-    // scheduleSheetAllRange の範囲情報を取得
-    var scheduleNumRows = scheduleSheetAllRange.getNumRows();
-    var scheduleNumColumns = scheduleSheetAllRange.getNumColumns();
-
+  //   // scheduleSheetAllRange の範囲情報を取得
+  //   var scheduleNumRows = scheduleSheetAllRange.getNumRows();
+  //   var scheduleNumColumns = scheduleSheetAllRange.getNumColumns();
+    
     // dataBaseSheet の範囲を scheduleSheetAllRange の範囲で取得
-    dataBaseSheetAllRange = dataBaseSheet.getRange(
-      1,
-      1,
-      scheduleNumRows,
-      scheduleNumColumns
-    );
+    //TODO:
+    //dataBaseSheetAllRange = dataBaseSheet.getRange(1, 1, scheduleNumRows, scheduleNumColumns);
     // 値を取得
-    dataBaseSheetDataValues = dataBaseSheetAllRange.getValues();
-  }
+    //dataBaseSheetDataValues = dataBaseSheetAllRange.getValues();
+  //}
 
   //土日祝日判定
   function isHoliday(date) {
@@ -576,7 +585,6 @@ function updateScheduleSheetDeadline() {
       progressSheetAllBackGrounds[PS_STORYNAME_ROW_INDEX][
         PS_STORYNAME_COLUMN_INDEX
       ];
-    storyInfo.storyFontColor = allDataRange.getFontColorObject();
 
     //シーン情報・担当者情報
     for (
@@ -600,17 +608,15 @@ function updateScheduleSheetDeadline() {
       let scene = new Scene();
       scene.sceneName = progressSheetDataValues[i][PS_SCENENAME_COLUMN_INDEX];
       scene.startDate = progressSheetDataValues[i][PS_STARTDATE_COLUMN_INDEX];
-      scene.totalDays =
-        progressSheetDataValues[i][PS_TOTALDAYS_COLUMN_INDEX] +
-        progressSheetDataValues[i][PS_SCENE_REARANGE_MANHOUR_COLUMN_INDEX]; //総工数＋再調整の値にする
+      scene.totalDays = progressSheetDataValues[i][PS_TOTALDAYS_COLUMN_INDEX] + progressSheetDataValues[i][PS_SCENE_REARANGE_MANHOUR_COLUMN_INDEX];  //総工数＋再調整の値にする
       scene.warikomi = progressSheetDataValues[i][PS_WARIKOMI_COLUMN_INDEX];
       scene.replaceScene =
         progressSheetDataValues[i][PS_REPLACESCENE_COLUMN_INDEX];
       // 工数背景色
       const manHoursEndIndex = progressSheetDataValues[i].findIndex(
         (data, index) => data != "" && index >= PS_SCENE_MANHOUR_COLUMN_INDEX
-      ); //工数背景色が何列目までにあるか取得する。
-
+      );  //工数背景色が何列目までにあるか取得する。
+      
       scene.manHoursColor = progressSheetAllBackGrounds[i].slice(
         PS_SCENE_MANHOUR_COLUMN_INDEX,
         manHoursEndIndex + 1
@@ -675,7 +681,7 @@ function updateScheduleSheetDeadline() {
     // データベース表読み込み
     const dataBaseSheet = spreadsheet.getSheetByName(DATA_BASE_SHEET_NAME);
     // スケジュール表情報取得
-    getScheduleSheetInfo(scheduleSheet, dataBaseSheet);
+    getScheduleSheetInfoC(scheduleSheet,dataBaseSheet);
 
     // カレンダー部分とメモの切り出し
     const cal = scheduleSheetDataValues[SS_CALENDERDATE_ROW_INDEX];
@@ -721,7 +727,7 @@ function updateScheduleSheetDeadline() {
       }
     });
 
-    updateScheduleSheetWithDataValues();
+    updateScheduleSheetWithDataValuesC();
 
     // エラーメッセージがあればダイアログとして表示
     if (errorMessages.length > 0) {
@@ -745,4 +751,5 @@ function updateScheduleSheetDeadline() {
       date1.getDate() === date2.getDate()
     );
   }
+
 }
