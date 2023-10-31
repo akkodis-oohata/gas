@@ -1,41 +1,48 @@
+/*
+時間測定用ファイルの為、最終的には削除予定。
+*/
 function timeTestMain(){
   timeTest()
 }
 {
   function timeTest(){
     //テスト開始
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var sheetName = "性能テスト";
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
     var range = getRangeData(sheet)
     var backgroundcolor = getRandomColor()
     var bordercolor1 = getRandomColor()
     var bordercolor2 = getRandomColor()
     var borderStyle1 = setRandomBorderStyle()
     var borderStyle2 = setRandomBorderStyle()
-    var randomString = generateRandomString()
+    var randomString1 = generateRandomSymbols()
+    var randomString2 = generateRandomString()
     //setのテスト
-    /*
     const labelset = 'setTimeTest'
     console.time(labelset)
-    setRangeValues(range, randomString)
+    setRangeValues(range, randomString1)
     setAllBackgrounds(range, backgroundcolor)
     setBottomBorder1(range, bordercolor1, borderStyle1)
     setBottomBorders(sheet, range, bordercolor2, borderStyle2)
+    setRangeNotes(range,randomString2)
     console.timeEnd(labelset)
-    */
     //getのテスト
     const label = 'getTimeTest'
     console.time(label)
     getValuesTime(range)
     getBackgroundsTime(range)
+    getNoteTime(range)
+    /*
     getBorderBottom(range)
     //getBorderBottomStyle(range)
     //テスト終了
     console.timeEnd(label)
+    */
   }
   function getRangeData(sheet) {
     const label = 'getRangeData'
     console.time(label)
-    var range = sheet.getRange(2, 2, 60, 182);  //2,2,60,730
+    var range = sheet.getRange(2, 2, 60, 730);  //2,2,30,730
     console.timeEnd(label)
     return range
   }
@@ -130,6 +137,30 @@ function timeTestMain(){
     
     console.timeEnd(label);
   }
+
+  function setRangeNotes(range, inputNote) {
+    var numRows = range.getNumRows();
+    var numCols = range.getNumColumns();
+  
+    var notes = [];
+    for (var i = 0; i < numRows; i++) {
+      notes[i] = [];
+      for (var j = 0; j < numCols; j++) {
+        // 行番号が奇数である場合にのみノートを設定
+        if ((i + 1) % 2 == 1) {
+          notes[i][j] = inputNote;
+        } else {
+          notes[i][j] = "";  // それ以外の場合は空のノートを設定
+        }
+      }
+    }
+  
+    const label = 'setRangeNotes';
+    console.time(label);
+    range.setNotes(notes);
+    console.timeEnd(label);
+  }
+  
   
   
   //getのテスト
@@ -138,7 +169,7 @@ function timeTestMain(){
     const label = 'getValuesTime'
     console.time(label)
     var values = range.getValues()
-    //console.log(values)
+    console.log(values)
     console.timeEnd(label)
   }
   function getBackgroundsTime(range){
@@ -149,7 +180,7 @@ function timeTestMain(){
     console.timeEnd(label)
   }
   function getBorderBottom(range){
-    const label = 'getBackgroundsTime'
+    const label = 'getBorderBottom'
     console.time(label)
     var numRows = range.getNumRows();
     var numCols = range.getNumColumns();
@@ -196,6 +227,19 @@ function timeTestMain(){
     }
     return color;
   }
+
+  function getNoteTime(range){
+    const label = 'getNoteTime'
+    console.time(label)
+    var results = range.getNotes();
+    console.timeEnd(label)
+    for (var i in results) {
+      for (var j in results[i]) {
+        //Logger.log(results[i][j]);
+      }
+    }
+  }
+
   function setRandomBorderStyle() {
     var borderStyles = [
       SpreadsheetApp.BorderStyle.SOLID,
@@ -213,6 +257,15 @@ function timeTestMain(){
     for (var i = 0; i < 2; i++) {
       var randomIndex = Math.floor(Math.random() * chars.length);
       result += chars.charAt(randomIndex);
+    }
+    return result;
+  }
+  function generateRandomSymbols() {
+    var symbols = '▼▲●■□○★☆⇧⇨⇩⇦';
+    var result = '';
+    for (var i = 0; i < 3; i++) {
+      var randomIndex = Math.floor(Math.random() * symbols.length);
+      result += symbols.charAt(randomIndex);
     }
     return result;
   }

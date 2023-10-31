@@ -91,7 +91,7 @@ function updateManHoursAllSheetMain() {
     // コピー先変数
     let pasteVal = [];
     let pasteBg = [];
-    let pasteColor = [[]];
+    let pasteColor = [];
     progress_sheets.forEach((progress_sheet) => {
       // 進行表のデータを取得
       const progressDataRange = progress_sheet.getRange(
