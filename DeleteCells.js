@@ -2,9 +2,8 @@
 空白セル追加処理
 */
 function deleteCellsMain() {
-  deleteCells()
+  deleteCells();
 }
-
 
 {
   // 削除後詰めON のINDEX
@@ -12,7 +11,7 @@ function deleteCellsMain() {
   const TSUMEDELON_COLUMN_INDEX = 5;
 
   function deleteCells() {
-    console.log('deleteCells in')
+    console.log("deleteCells in");
     // スプレッドシートの読み込み
     let spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     let scheduleSheet = spreadsheet.getActiveSheet();
@@ -22,37 +21,38 @@ function deleteCellsMain() {
     var ranges = selection.getActiveRangeList().getRanges();
 
     // 選択範囲のチェックと取得
-    let range = getSelectedRange(ranges);
-    if(range == undefined){
+    let range = getSelectedRange(ranges, scheduleSheet);
+    if (range == undefined) {
       return;
     }
-
 
     // データベースシートの読み込み
     let dataBaseSheet = spreadsheet.getSheetByName(DATA_BASE_SHEET_NAME);
 
     //データスペース（作品話数ベースデータ）へ反映を行う。
-    updateDataSpaceMain(spreadsheet)
-
-    const label = 'deleteCells'
-    console.time(label)
+    // updateDataSpaceMain(spreadsheet);
+    const label = "deleteCells";
+    console.time(label);
 
     // スケジュール表情報取得(データスペース反映後)
     getScheduleSheetInfoC(scheduleSheet, dataBaseSheet);
 
     // 削除後詰めON
-    let tsumeDelOn = scheduleSheetDataValues[TSUMEDELON_ROW_INDEX][TSUMEDELON_COLUMN_INDEX]
-    console.log('tsumeDelOn:' + tsumeDelOn)
+    let tsumeDelOn =
+      scheduleSheetDataValues[TSUMEDELON_ROW_INDEX][TSUMEDELON_COLUMN_INDEX];
+    console.log("tsumeDelOn:" + tsumeDelOn);
 
-    console.log('Row,LastRow: ' + range.getRow() + "," + range.getLastRow());
-    console.log('Column,LastColumn: ' + range.getColumn() + "," + range.getLastColumn());
+    console.log("Row,LastRow: " + range.getRow() + "," + range.getLastRow());
+    console.log(
+      "Column,LastColumn: " + range.getColumn() + "," + range.getLastColumn()
+    );
 
     if (tsumeDelOn) {
       //セル削除（削除後詰めあり）
-      deleteCellsWithMove(range)
+      deleteCellsWithMove(range);
     } else {
       //セル削除（削除後詰めなし）
-      deleteCellsC(range)
+      deleteCellsC(range);
     }
 
     // 先頭の名前更新
@@ -62,11 +62,7 @@ function deleteCellsMain() {
     // 更新したスケジュール表情報で画面更新
     updateScheduleSheetWithDataValuesC();
 
-    console.timeEnd(label)
-    console.log('deleteCells out')
-
+    console.timeEnd(label);
+    console.log("deleteCells out");
   }
-
-
-
 }

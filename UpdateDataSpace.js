@@ -20,34 +20,29 @@
     撒済(色)
 */
 //TODO:フォーマットがおかしな場合のエラー対策を必要。
-function demoUpdateDataSpace(){
-  let spreadsheet = SpreadsheetApp.getActiveSpreadsheet()
+function demoUpdateDataSpace() {
+  let spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = spreadsheet.getActiveSheet();
   let databaseSheet = spreadsheet.getSheetByName("データベース");
 
-  updateDataBaseSheet(sheet,databaseSheet)
+  updateDataBaseSheet(sheet, databaseSheet);
 }
 
-function updateDataBaseSheetMain(){
+function updateDataBaseSheetMain() {
   let spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   // ソースシート（Aシート）を取得
   let sourceSheet = spreadsheet.getSheetByName("スケジュール管理仕様");
   // データベースシート（Bシート）を取得
   let databaseSheet = spreadsheet.getSheetByName("データベース");
-  updateDataBaseSheet(sourceSheet,databaseSheet)
+  updateDataBaseSheet(sourceSheet, databaseSheet);
 }
 
-
-function updateDataSpaceMain(sheet){
-  let spreadsheet = SpreadsheetApp.getActiveSpreadsheet()
+function updateDataSpaceMain(sheet) {
+  let spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   let databaseSheet = spreadsheet.getSheetByName("データベース");
-  
-  updateDataBaseSheet(sheet,databaseSheet)
 
+  updateDataBaseSheet(sheet, databaseSheet);
 }
-
-
-
 
 {
   //-----------------
@@ -59,17 +54,16 @@ function updateDataSpaceMain(sheet){
   //const PERSON_COLUMN_INDEX = 6;
   const PERSON_ROW_START_INDEX = 7;
 
-  const BD_DATA_SPACE_START_KEYWORD = "以下データ用スペース(最大1100行)"
-  const BD_DATA_SPACE_ROWS = 180  //データスペースの行数
+  const BD_DATA_SPACE_START_KEYWORD = "以下データ用スペース(最大1100行)";
+  const BD_DATA_SPACE_ROWS = 180; //データスペースの行数
   const BD_WORKER_BASE_DATA_KEYWORD = "作業者ベースデータ";
   const BD_OTHER_COMPANY_BASE_DATA_KEYWORD = "他社ベースデータ";
   const CLW_ARTWORK_PERSONS_TITLE = "CLW美術作業者一覧";
   const OTHER_COMPANY_HELP_TITLE = "他社ヘルプ";
   const FREE_SPACE_TITLE = "以下フリースぺース";
 
-  const DATA_BASE_SHEET_NAME = "データベース"  //データベースシートのシート名
-  const DATA_SOURCE_SHEET_NAME = "スケジュール管理仕様"
-
+  const DATA_BASE_SHEET_NAME = "データベース"; //データベースシートのシート名
+  const DATA_SOURCE_SHEET_NAME = "スケジュール管理仕様";
 
   //-----------------
   //変数
@@ -93,40 +87,38 @@ function updateDataSpaceMain(sheet){
   //getValuesの値やgetbackgroundsの値を引数として渡すと、この関数内で配列のサイズが変わるが、
   //呼び出し元にはそれが反映されずエラーになるので、sheetだけ渡している。
   //データベースシートにデータを書き込む
-  function updateDataBaseSheet(sourceSheet,dataBaseSheet){
-    const label = 'updateDataBaseSheet'
-    console.time(label)
+  function updateDataBaseSheet(sourceSheet, dataBaseSheet) {
+    const label = "updateDataBaseSheet";
+    console.time(label);
 
-    if(dataBaseSheet === null){
-      return
-    }
-
-    getScheduleSheetInfoC(sourceSheet,dataBaseSheet)
-    
-
-    //データスペース初期化(以下データ用スペース(最大1000行)より下全削除)
-    initializeDataSpace(scheduleSheetDataValues,dataBaseSheetDataValues)
-    
-    //スケジュール表の値を読み取り、作業者用ベースデータのデータスペースを更新
-    let personsArray = updateDataSpaceParson()
-    if(personsArray === null ){
+    if (dataBaseSheet === null) {
       return;
     }
-    
+
+    getScheduleSheetInfoC(sourceSheet, dataBaseSheet);
+
+    //データスペース初期化(以下データ用スペース(最大1000行)より下全削除)
+    initializeDataSpace(scheduleSheetDataValues, dataBaseSheetDataValues);
+
+    //スケジュール表の値を読み取り、作業者用ベースデータのデータスペースを更新
+    let personsArray = updateDataSpaceParson();
+    if (personsArray === null) {
+      return;
+    }
+
     //他社ベースデータのデータスペースを更新
-    let otherCompanieArray = updateDataSpaceOtherCompanie()
-    if(otherCompanieArray === null ){
+    let otherCompanieArray = updateDataSpaceOtherCompanie();
+    if (otherCompanieArray === null) {
       return;
     }
 
     // BD_DATA_SPACE_ROWS分のみに配列を加工
     dataBaseSheetDataValues.splice(BD_DATA_SPACE_ROWS);
 
-
     // 更新したスケジュール表情報でデータベースシートを更新
-    updateScheduleSheetWithDataValues(dataBaseSheet,dataBaseSheetDataValues);
+    updateScheduleSheetWithDataValues(dataBaseSheet, dataBaseSheetDataValues);
 
-    console.timeEnd(label)
+    console.timeEnd(label);
   }
 
   // // スケジュール表情報取得
@@ -145,8 +137,9 @@ function updateDataSpaceMain(sheet){
 
   // データスペース初期化(以下データ用スペース(最大1100行)より下を空行で塗りつぶす)
   // scduleSheetValuesの列数でdataBaseValuesを作成
-  function initializeDataSpace(sourceValue,dataValues){
-    const startRowIndex = dataValues.findIndex(row => row[0] === BD_DATA_SPACE_START_KEYWORD) + 1;
+  function initializeDataSpace(sourceValue, dataValues) {
+    const startRowIndex =
+      dataValues.findIndex((row) => row[0] === BD_DATA_SPACE_START_KEYWORD) + 1;
     //console.log(startRowIndex)
     const maxRows = BD_DATA_SPACE_ROWS + startRowIndex;
 
@@ -189,36 +182,50 @@ function updateDataSpaceMain(sheet){
     workerBaseRow[PERSON_COLUMN_INDEX] = BD_WORKER_BASE_DATA_KEYWORD;
 
     let otherCompanyBaseRow = new Array(sourceValue[0].length).fill("");
-    otherCompanyBaseRow[PERSON_COLUMN_INDEX] = BD_OTHER_COMPANY_BASE_DATA_KEYWORD;
-    
+    otherCompanyBaseRow[PERSON_COLUMN_INDEX] =
+      BD_OTHER_COMPANY_BASE_DATA_KEYWORD;
+
     // 既存の行を上書きまたは新しい行を追加
     dataValues[startRowIndex] = workerBaseRow;
     dataValues[startRowIndex + 1] = otherCompanyBaseRow;
-    
   }
-  
 
   //スケジュール表の値を読み取り、作業者用ベースデータのデータスペースを更新
-  function updateDataSpaceParson(){
+  function updateDataSpaceParson() {
     //担当者単位でループ
     //スケジュール表部分読み込み
-    let personsArray = createPersonsArray(CLW_ARTWORK_PERSONS_TITLE,OTHER_COMPANY_HELP_TITLE)
-    if(personsArray !== null){
+    let personsArray = createPersonsArray(
+      CLW_ARTWORK_PERSONS_TITLE,
+      OTHER_COMPANY_HELP_TITLE
+    );
+    if (personsArray !== null) {
       //データスペース用にpersonsArrayを編集
-      editDataForDataSpace(personsArray, BD_DATA_SPACE_START_KEYWORD, BD_OTHER_COMPANY_BASE_DATA_KEYWORD, BD_WORKER_BASE_DATA_KEYWORD)
+      editDataForDataSpace(
+        personsArray,
+        BD_DATA_SPACE_START_KEYWORD,
+        BD_OTHER_COMPANY_BASE_DATA_KEYWORD,
+        BD_WORKER_BASE_DATA_KEYWORD
+      );
     }
 
-    return personsArray
-
+    return personsArray;
   }
 
-  function updateDataSpaceOtherCompanie(){
-    let otherCompanieArray = createPersonsArray(OTHER_COMPANY_HELP_TITLE, FREE_SPACE_TITLE)
-    if(otherCompanieArray !== null){
+  function updateDataSpaceOtherCompanie() {
+    let otherCompanieArray = createPersonsArray(
+      OTHER_COMPANY_HELP_TITLE,
+      FREE_SPACE_TITLE
+    );
+    if (otherCompanieArray !== null) {
       //データスペース用にpersonsArrayを編集
-      editDataForDataSpace(otherCompanieArray, BD_DATA_SPACE_START_KEYWORD, BD_OTHER_COMPANY_BASE_DATA_KEYWORD, BD_OTHER_COMPANY_BASE_DATA_KEYWORD)
+      editDataForDataSpace(
+        otherCompanieArray,
+        BD_DATA_SPACE_START_KEYWORD,
+        BD_OTHER_COMPANY_BASE_DATA_KEYWORD,
+        BD_OTHER_COMPANY_BASE_DATA_KEYWORD
+      );
     }
-    return otherCompanieArray
+    return otherCompanieArray;
   }
 
   //A列にあるCLW美術作業者一覧行~"他社ヘルプ"行まで取得
@@ -239,30 +246,42 @@ function updateDataSpaceMain(sheet){
         this.statesColor = undefined;
       }
     }
-  
+
     // "CLW美術作業者一覧" と "他社ヘルプ" の行番号を見つける
-    let startRowIndex = scheduleSheetDataValues.findIndex(row => row[0] === startKeyword);
-    let endRowIndex = scheduleSheetDataValues.findIndex(row => row[0] === endKeyword);
-  
+    let startRowIndex = scheduleSheetDataValues.findIndex(
+      (row) => row[0] === startKeyword
+    );
+    let endRowIndex = scheduleSheetDataValues.findIndex(
+      (row) => row[0] === endKeyword
+    );
+
     // Personオブジェクトの配列を準備
     let persons = [];
-    let person;  // 現在のPersonオブジェクトを保持するための変数
-  
+    let person; // 現在のPersonオブジェクトを保持するための変数
+
     // 指定された範囲の行を処理する
     if (startRowIndex !== -1 && endRowIndex !== -1) {
       for (let i = startRowIndex + 1; i < endRowIndex; i += 3) {
         // 新しいPersonオブジェクトを作成
         person = new Person();
-        person.personName = scheduleSheetDataValues[i][PERSON_COLUMN_INDEX];  // personNameプロパティを設定
-        
+        person.personName = scheduleSheetDataValues[i][PERSON_COLUMN_INDEX]; // personNameプロパティを設定
+
         // 右側の全てのセルの値を配列に格納し、scheduleプロパティを設定
-        person.schedule = scheduleSheetDataValues[i].slice(PERSON_COLUMN_INDEX + 1);
-        person.scheduleColor = scheduleSheetAllBackGrounds[i].slice(PERSON_COLUMN_INDEX + 1);
-        
+        person.schedule = scheduleSheetDataValues[i].slice(
+          PERSON_COLUMN_INDEX + 1
+        );
+        person.scheduleColor = scheduleSheetAllBackGrounds[i].slice(
+          PERSON_COLUMN_INDEX + 1
+        );
+
         // 翌行からstatesとstatesColorを取得
-        person.states = scheduleSheetDataValues[i+1].slice(PERSON_COLUMN_INDEX + 1);
-        person.statesColor = scheduleSheetAllBackGrounds[i+1].slice(PERSON_COLUMN_INDEX + 1);
-        
+        person.states = scheduleSheetDataValues[i + 1].slice(
+          PERSON_COLUMN_INDEX + 1
+        );
+        person.statesColor = scheduleSheetAllBackGrounds[i + 1].slice(
+          PERSON_COLUMN_INDEX + 1
+        );
+
         // Personオブジェクトをpersons配列に追加
         persons.push(person);
       }
@@ -270,8 +289,8 @@ function updateDataSpaceMain(sheet){
       // ダイアログを表示してエラーを通知
       let ui = SpreadsheetApp.getUi();
       ui.alert(
-        'データ範囲エラー', 
-        '必要なデータの範囲が見つかりませんでした。スプレッドシートのフォーマットが正しいことを確認し、再度お試しください。',
+        "データ範囲エラー",
+        "必要なデータの範囲が見つかりませんでした。スプレッドシートのフォーマットが正しいことを確認し、再度お試しください。",
         ui.ButtonSet.OK
       );
       // 処理を停止
@@ -282,17 +301,22 @@ function updateDataSpaceMain(sheet){
   }
 
   // データスペース用に編集する関数
-  function editDataForDataSpace(personsArray, startKeyword, endKeyword, targetKeyword) {
+  function editDataForDataSpace(
+    personsArray,
+    startKeyword,
+    endKeyword,
+    targetKeyword
+  ) {
     // 行インデックスを取得する関数
-    let {startIndex, endIndex, targetIndex} = findRowIndices({
+    let { startIndex, endIndex, targetIndex } = findRowIndices({
       dataValues: dataBaseSheetDataValues,
       startKeyword: startKeyword,
       endKeyword: endKeyword,
       targetKeyword: targetKeyword,
-      targetColumnIndex: PERSON_COLUMN_INDEX
+      targetColumnIndex: PERSON_COLUMN_INDEX,
     });
     let startPersonRowIndex = targetIndex;
-    
+
     // エラーチェック: "作業者ベースデータ"行が見つかったかどうかを確認
     if (startPersonRowIndex === -1) {
       console.error(`Error: "${targetKeyword}" row not found.`);
@@ -301,29 +325,44 @@ function updateDataSpaceMain(sheet){
 
     for (let i = 0; i < personsArray.length; i++) {
       let person = personsArray[i];
-      let targetRowIndexForPerson = startPersonRowIndex + i * 3 + 1;  //１作業者あたり、3行
+      let targetRowIndexForPerson = startPersonRowIndex + i * 3 + 1; //１作業者あたり、3行
       let targetRowIndexForStates = targetRowIndexForPerson + 1;
       let targetRowIndexForMemo = targetRowIndexForStates + 1;
-      
-      insertPersonNameAndStatesRows(targetRowIndexForPerson, targetRowIndexForStates, targetRowIndexForMemo, person); // personNameとstatesの行を設定する関数
+
+      insertPersonNameAndStatesRows(
+        targetRowIndexForPerson,
+        targetRowIndexForStates,
+        targetRowIndexForMemo,
+        person
+      ); // personNameとstatesの行を設定する関数
       for (let j = 0; j < person.schedule.length; j++) {
-        setBackgroundColorAndDataValues(targetRowIndexForPerson, targetRowIndexForStates, person, j); //背景色とデータ値を設定する関数
-        
-        if (personsArray[i].schedule[j] !== "") {  // スケジュールのシーンがある場合に背景色を取得
+        setBackgroundColorAndDataValues(
+          targetRowIndexForPerson,
+          targetRowIndexForStates,
+          person,
+          j
+        ); //背景色とデータ値を設定する関数
+
+        if (personsArray[i].schedule[j] !== "") {
+          // スケジュールのシーンがある場合に背景色を取得
           let storyColor = personsArray[i].scheduleColor[j];
           let sceneName = personsArray[i].schedule[j];
           // 背景色が同じ限り、sceneNameの内容を次の配列personsArray[i].schedule[j＋1....n]にコピーする。
           for (let k = j + 1; k < personsArray[i].schedule.length; k++) {
-            if (personsArray[i].schedule[k] !== "" && personsArray[i].schedule[k] !== sceneName) { // すでにテキストが存在し、かつsceneNameと異なる場合、sceneNameを更新し、ループの残りの部分をスキップする
+            if (
+              personsArray[i].schedule[k] !== "" &&
+              personsArray[i].schedule[k] !== sceneName
+            ) {
+              // すでにテキストが存在し、かつsceneNameと異なる場合、sceneNameを更新し、ループの残りの部分をスキップする
               sceneName = personsArray[i].schedule[k];
               continue;
             }
             if (personsArray[i].scheduleColor[k] === storyColor) {
               personsArray[i].schedule[k] = sceneName;
-            } else if(personsArray[i].scheduleColor[k] === COLOR_HOLIDAY){
-              personsArray[i].schedule[k] = "";  //土日の背景色COLOR_HOLIDAYだった場合は、空欄にして、別の背景色が来るまでコピーし続ける。//TODO:
+            } else if (personsArray[i].scheduleColor[k] === COLOR_HOLIDAY) {
+              personsArray[i].schedule[k] = ""; //土日の背景色COLOR_HOLIDAYだった場合は、空欄にして、別の背景色が来るまでコピーし続ける。//TODO:
             } else {
-              break;  // 背景色が異なる場合、ループを終了する
+              break; // 背景色が異なる場合、ループを終了する
             }
           }
         }
@@ -331,52 +370,68 @@ function updateDataSpaceMain(sheet){
     }
     /* editDataForDataSpace()のインナー関数 */
     // personNameとstatesを新規で行を挿入する関数
-    function insertPersonNameAndStatesRows(targetRowIndexForPerson, targetRowIndexForStates, targetRowIndexForMemo, person) {
-      let personNameRow  = new Array(scheduleSheetDataValues[0].length).fill("");  // 新しい行を作成し、全てのセルを空文字列で初期化する
-      personNameRow [PERSON_COLUMN_INDEX] = person.personName;  // 作業者名を設定する
-      dataBaseSheetDataValues.splice(targetRowIndexForPerson,0,personNameRow)
-      
-      let statesRow  = new Array(scheduleSheetDataValues[0].length).fill("");  // 新しい行を作成し、全てのセルを空文字列で初期化する
-      statesRow [PERSON_COLUMN_INDEX] = "states";  // statesを設定する
-      dataBaseSheetDataValues.splice(targetRowIndexForStates,0,statesRow)
+    function insertPersonNameAndStatesRows(
+      targetRowIndexForPerson,
+      targetRowIndexForStates,
+      targetRowIndexForMemo,
+      person
+    ) {
+      let personNameRow = new Array(scheduleSheetDataValues[0].length).fill(""); // 新しい行を作成し、全てのセルを空文字列で初期化する
+      personNameRow[PERSON_COLUMN_INDEX] = person.personName; // 作業者名を設定する
+      dataBaseSheetDataValues.splice(targetRowIndexForPerson, 0, personNameRow);
 
-      let memoRow = new Array(scheduleSheetDataValues[0].length).fill("");  // 新しい行を作成し、全てのセルを空文字列で初期化する
-      memoRow [PERSON_COLUMN_INDEX] = "memo";  // memoを設定する
-      dataBaseSheetDataValues.splice(targetRowIndexForMemo,0,memoRow)
+      let statesRow = new Array(scheduleSheetDataValues[0].length).fill(""); // 新しい行を作成し、全てのセルを空文字列で初期化する
+      statesRow[PERSON_COLUMN_INDEX] = "states"; // statesを設定する
+      dataBaseSheetDataValues.splice(targetRowIndexForStates, 0, statesRow);
 
+      let memoRow = new Array(scheduleSheetDataValues[0].length).fill(""); // 新しい行を作成し、全てのセルを空文字列で初期化する
+      memoRow[PERSON_COLUMN_INDEX] = "memo"; // memoを設定する
+      dataBaseSheetDataValues.splice(targetRowIndexForMemo, 0, memoRow);
     }
 
     // 背景色とデータ値を設定する関数
-    function setBackgroundColorAndDataValues(targetRowIndexForPerson, targetRowIndexForStates, person, j) {
+    function setBackgroundColorAndDataValues(
+      targetRowIndexForPerson,
+      targetRowIndexForStates,
+      person,
+      j
+    ) {
       let targetColumnIndex = PERSON_COLUMN_INDEX + 1 + j;
-      dataBaseSheetDataValues[targetRowIndexForPerson][targetColumnIndex] = person.schedule[j];
-      dataBaseSheetDataValues[targetRowIndexForStates][targetColumnIndex] = person.states[j];
+      dataBaseSheetDataValues[targetRowIndexForPerson][targetColumnIndex] =
+        person.schedule[j];
+      dataBaseSheetDataValues[targetRowIndexForStates][targetColumnIndex] =
+        person.states[j];
     }
     /* editDataForDataSpace()のインナー関数 */
   }
-  
+
   // A列の一定の範囲行からキーワードの行を取得する方法
-  function findRowIndices({dataValues, startKeyword, endKeyword, targetKeyword, targetColumnIndex}) {
-    let startIndex = dataValues.findIndex(row => row[0] === startKeyword);
-    let endIndex = dataValues.findIndex(row => row[0] === endKeyword);
+  function findRowIndices({
+    dataValues,
+    startKeyword,
+    endKeyword,
+    targetKeyword,
+    targetColumnIndex,
+  }) {
+    let startIndex = dataValues.findIndex((row) => row[0] === startKeyword);
+    let endIndex = dataValues.findIndex((row) => row[0] === endKeyword);
     let targetIndex = dataValues.findIndex(
-      row => row[targetColumnIndex] === targetKeyword,
+      (row) => row[targetColumnIndex] === targetKeyword,
       startIndex + 1
     );
-    return {startIndex, endIndex, targetIndex};
+    return { startIndex, endIndex, targetIndex };
   }
-    
+
   //スケジュール表の画面を更新する
   //TODO：getRangeでとった値は、値が入っていないととってこないので、この方式の方がよさそうだと思う。
-  function updateScheduleSheetWithDataValues(sheet,values) {
-    let startRow = 1;  // 1行目から開始
-    let startColumn = 1;  // 1列目から開始
-    let numRows = values.length;  // データの行数
-    let numColumns = values[0].length;  // データの列数
-    let range = sheet.getRange(startRow, startColumn, numRows, numColumns); 
+  function updateScheduleSheetWithDataValues(sheet, values) {
+    let startRow = 1; // 1行目から開始
+    let startColumn = 1; // 1列目から開始
+    let numRows = values.length; // データの行数
+    let numColumns = values[0].length; // データの列数
+    let range = sheet.getRange(startRow, startColumn, numRows, numColumns);
     range.setValues(values);
-      //スケジュール表の画面を更新する
+    //スケジュール表の画面を更新する
     //scheduleSheetAllRange.setValues(scheduleSheetDataValues);
   }
-  
 }
