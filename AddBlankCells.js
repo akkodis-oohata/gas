@@ -2,7 +2,7 @@
 空白セル追加処理
 */
 function addBlankCellsMain() {
-  addBlankCells();
+  exclusiveMain(addBlankCells);
 }
 
 {
@@ -26,13 +26,13 @@ function addBlankCellsMain() {
     let dataBaseSheet = spreadsheet.getSheetByName(DATA_BASE_SHEET_NAME);
 
     //データスペース（作品話数ベースデータ）へ反映を行う。
-    // updateDataSpaceMain(spreadsheet);
+    //updateDataSpaceMain(spreadsheet)
 
     const label = "addCells";
     console.time(label);
 
     // スケジュール表情報取得(データスペース反映後)
-    getScheduleSheetInfoC(scheduleSheet, dataBaseSheet);
+    getScheduleSheetPersonInfoC(scheduleSheet, dataBaseSheet, range.getRow());
 
     console.log("Active Ranges: " + range.getA1Notation());
     console.log("Row,LastRow: " + range.getRow() + "," + range.getLastRow());
@@ -41,14 +41,14 @@ function addBlankCellsMain() {
     );
 
     // 空白セルの挿入
-    addBlankCellsC(range);
+    addBlankCellsC(range, false);
 
     // 先頭の名前更新
-    let rowIndex = range.getRow() - 1;
-    displaySceneNameC(rowIndex);
+    // let rowIndex = range.getRow() - 1;
+    displaySceneNameC(0);
 
     // 更新したスケジュール表情報で画面更新
-    updateScheduleSheetWithDataValuesC();
+    updateScheduleSheetPresonWithDataValuesC();
     console.timeEnd(label);
     console.log("addBlankCells out");
   }

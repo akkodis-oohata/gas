@@ -1,5 +1,5 @@
 function updateProgressSheetMain(){
-  exclusiveCheck(updateProgressSheet);
+  updateProgressSheet();
 }
 
 {

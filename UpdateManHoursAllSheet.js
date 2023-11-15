@@ -1,5 +1,5 @@
 function updateManHoursAllSheetMain() {
-  exclusiveMain(updateManHoursAllSheet);
+  updateManHoursAllSheet();
 }
 
 {

@@ -1,14 +1,14 @@
 /*
-空白セル追加処理
+削除後詰め、削除処理
 */
 function deleteCellsMain() {
-  deleteCells();
+  exclusiveMain(deleteCells);
 }
 
 {
-  // 削除後詰めON のINDEX
-  const TSUMEDELON_ROW_INDEX = 0;
-  const TSUMEDELON_COLUMN_INDEX = 5;
+  // 削除後詰めON の場所
+  const TSUMEDELON_ROW = 1;
+  const TSUMEDELON_COLUMN = 6;
 
   function deleteCells() {
     console.log("deleteCells in");
@@ -30,16 +30,18 @@ function deleteCellsMain() {
     let dataBaseSheet = spreadsheet.getSheetByName(DATA_BASE_SHEET_NAME);
 
     //データスペース（作品話数ベースデータ）へ反映を行う。
-    // updateDataSpaceMain(spreadsheet);
+    //updateDataSpaceMain(spreadsheet)
+
     const label = "deleteCells";
     console.time(label);
 
     // スケジュール表情報取得(データスペース反映後)
-    getScheduleSheetInfoC(scheduleSheet, dataBaseSheet);
+    getScheduleSheetPersonInfoC(scheduleSheet, dataBaseSheet, range.getRow());
 
     // 削除後詰めON
-    let tsumeDelOn =
-      scheduleSheetDataValues[TSUMEDELON_ROW_INDEX][TSUMEDELON_COLUMN_INDEX];
+    let tsumeDelOn = scheduleSheet
+      .getRange(TSUMEDELON_ROW, TSUMEDELON_COLUMN)
+      .getValue();
     console.log("tsumeDelOn:" + tsumeDelOn);
 
     console.log("Row,LastRow: " + range.getRow() + "," + range.getLastRow());
@@ -49,18 +51,18 @@ function deleteCellsMain() {
 
     if (tsumeDelOn) {
       //セル削除（削除後詰めあり）
-      deleteCellsWithMove(range);
+      deleteCellsWithMove(range, false);
     } else {
       //セル削除（削除後詰めなし）
-      deleteCellsC(range);
+      deleteCellsC(range, false);
     }
 
     // 先頭の名前更新
-    let rowIndex = range.getRow() - 1;
-    displaySceneNameC(rowIndex);
+    // let rowIndex = range.getRow() - 1;
+    displaySceneNameC(0);
 
     // 更新したスケジュール表情報で画面更新
-    updateScheduleSheetWithDataValuesC();
+    updateScheduleSheetPresonWithDataValuesC();
 
     console.timeEnd(label);
     console.log("deleteCells out");

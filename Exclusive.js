@@ -3,18 +3,23 @@ function exclusiveMain(callback) {
   let lock = LockService.getDocumentLock();
   lock.tryLock(0);
   if (lock.hasLock()) {
-    // スプレッドシートの読み込み
-    let spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    // シート読み込み
-    const sheets = spreadsheet.getSheets();
+    try {
+      // スプレッドシートの読み込み
+      // let spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      // シート読み込み
+      // const sheets = spreadsheet.getSheets();
 
-    //protectSheet(sheets); // シート保護
+      //protectSheet(sheets); // シート保護
 
-    // 処理実行
-    callback();
-
-    //unProtectSheet(sheets); // シート保護解除
-    lock.releaseLock(); //ロックを解除
+      // 処理実行
+      callback();
+    } catch (error) {
+      let ui = SpreadsheetApp.getUi();
+      ui.alert(error.message);
+    } finally {
+      //unProtectSheet(sheets); // シート保護解除
+      lock.releaseLock(); //ロックを解除
+    }
   } else {
     Browser.msgBox("他の処理が実行中です");
   }
@@ -26,8 +31,13 @@ function exclusiveCheck(callback) {
   lock.tryLock(0);
   if (lock.hasLock()) {
     lock.releaseLock(); //ロックを解除
-    // 処理実行
-    callback();
+    try {
+      // 処理実行
+      callback();
+    } catch (error) {
+      let ui = SpreadsheetApp.getUi();
+      ui.alert(error.message);
+    }
   } else {
     Browser.msgBox("他の処理が実行中です");
   }

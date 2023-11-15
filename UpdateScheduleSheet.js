@@ -1,14 +1,17 @@
 function updateScheduleSheetMain() {
-  updateScheduleSheet(); 
-  
+  exclusiveMain(updateScheduleSheet);
 }
 
 function generateCalendarMain() {
-  generateCalendar();
+  exclusiveCheck(generateCalendar);
 }
 
 function updateScheduleSheetDeadline() {
-  updateDeadline();
+  exclusiveMain(updateDeadline);
+}
+
+function addOneMonthCalenderMain() {
+  exclusiveMain(addOneMonthCalender);
 }
 
 {
@@ -63,10 +66,6 @@ function updateScheduleSheetDeadline() {
   const SS_SCHEDULE_SHEET_NAME = "スケジュール管理仕様";
   //締切一覧表シート名
   const DEADLINE_SHEET_NAME = "締切一覧表";
-  //セルの色塗り初期化時の色
-  //const COLOR_CLEAR = "#ffffff";
-  // 土日祝日の色
-  //const COLOR_HOLIDAY = "#808080";
   // 締め切りの色
   const COLOR_DEADLINE = "#FF0000";
 
@@ -108,21 +107,15 @@ function updateScheduleSheetDeadline() {
 
   //カレンダー
   const SS_CALENDERDATE_ROW_INDEX = 6;
-  //const SS_CALENDERDATE_COLUMN_INDEX = 7;
-  //表示最大日数
-  //const SS_MAXDAYS = 730; //730(24か月)
   //担当者
   const SS_PRSRON_COLUMN_INDEX = 6;
+  const SS_CALENDER_COLUMN = 8;
   const SS_PERSON_ROW_START_INDEX = 7;
   const SS_PERSON_ROW_STEP = 3; //作業者間の行間、作業者名、ステータス行、memo行
   //MAX担当者数（便宜的に用意）
   const SS_MAX_PERSONS = 8;
-  //HIDDENデータ領域（処理の都合上全セルに話数名#シーン名を持たしておきたいので）
-  const SS_HIDDEN_ROW_START_INDEX = 41;
   //カレンダー生成時前にクリアする領域（適当な値）//TODO
   const SS_CLEAR_ROW_LENGTH = 54;
-  // データベースとスケジュール表のフォーマットの差を埋める為、美術ルーム全体スケジュールmemoの行数分+CLW美術作業者一覧分-以下データスペース-作業者ベースデータで算出する
-  //const DATA_BASE_FORMAT_OFFSET = 5;
 
   //エラーメッセージ
   const ERROR_MESSAGE_FULL = `メモ欄が6行全て埋まっています`;
@@ -133,25 +126,18 @@ function updateScheduleSheetDeadline() {
   const OTHER_CO = "他社_";
   // フリースペース開始位置
   const SS_FREE_SPACE = "以下フリースぺース";
-
-  //const DATA_BASE_SHEET_NAME = "データベース"
-
+  const SS_PERSON_START_KEYWORD = "CLW美術作業者一覧";
+  const SS_OTHER_CO_START_KEYWORD = "他社ヘルプ";
 
   //-----------------
   //変数
   //-----------------
-  // スプレッドシート上でデータが入力されている最大範囲を選択
-  //let scheduleSheetAllRange = undefined;
-  //スケジュール表の全値取得
-  //let scheduleSheetDataValues = undefined;
-  //スケジュール表の背景色取得
-  //let scheduleSheetAllBackGrounds = undefined;
-  // データベースシートの最大範囲
-  //let dataBaseSheetAllRange = undefined;
-  // データベースシートに格納する為、データ領域を格納する配列
-  //let dataBaseSheetDataValues = undefined;
   // 「以下フリースペース」が一列目に書いてある行
   let freeSpaceRowIndex = undefined;
+  // グローバル変数として行番号を保持
+  let personRow = null;
+  let otherRow = null;
+  let freeSpaceRow = null;
 
   //-----------------
   //関数
@@ -189,10 +175,10 @@ function updateScheduleSheetDeadline() {
     //getScheduleSheetInfo(scheduleSheet);
 
     //スケジュール表のデータスペース（作品話数ベースデータ）へ反映を先に行う。
-    updateDataSpaceMain(scheduleSheet)
+    //updateDataSpaceMain(scheduleSheet)
 
     // スケジュール表情報取得(データスペース反映後)
-    getScheduleSheetInfoC(scheduleSheet,dataBaseSheet);
+    getScheduleSheetInfoC(scheduleSheet, dataBaseSheet);
 
     // スケジュール表情報を進行表の値で更新
     updateDateValues(storyInfo);
@@ -222,105 +208,480 @@ function updateScheduleSheetDeadline() {
     let dataBaseSheet = spreadsheet.getSheetByName(DATA_BASE_SHEET_NAME);
 
     // スケジュール表情報取得
-    getScheduleSheetInfoC(scheduleSheet,dataBaseSheet);
+    getScheduleSheetInfoC(scheduleSheet, dataBaseSheet);
+
+    // 美術ルーム全体(G列)より右側をすべて消す //TODO:フリースペースは消すべきか千葉さんと相談。
+    clearContentAndFormatting(scheduleSheet);
 
     //カレンダー日付設定
-    setCallendarDate();
+    let scheduleColors = setCalendarDate();
+
+    // 値書き込み
+    setSchedule(scheduleSheet, scheduleSheetDataValues);
+    setScheduleBackGround(scheduleSheet, scheduleColors);
+
+    //updateScheduleSheetWithDataValuesC();
+
+    // フォーマットを枠線を記入する
+    setBorderStyles(scheduleSheet);
+
     console.timeEnd(label);
   }
 
-  //カレンダー日付設定
-  function setCallendarDate() {
-    //領域範囲取得
-    const clearRowIndex =
-      SS_CALENDERDATE_ROW_INDEX + SS_CLEAR_ROW_LENGTH <
-      scheduleSheetDataValues.length
-        ? SS_CALENDERDATE_ROW_INDEX + SS_CLEAR_ROW_LENGTH
-        : scheduleSheetDataValues.length;
-    const clearColumIndex =
-      SS_PRSRON_COLUMN_INDEX + SS_MAXDAYS + 1 <
-      scheduleSheetDataValues[0].length
-        ? SS_PRSRON_COLUMN_INDEX + SS_MAXDAYS + 1
-        : scheduleSheetDataValues[0].length;
+  // 美術ルーム全体(G列)より右側をすべて消す
+  function clearContentAndFormatting(scheduleSheet) {
+    const lastColumn = scheduleSheet.getLastColumn();
+    const startColumn = SS_CALENDER_COLUMN;
 
-    //領域クリア（カレンダー、担当者名、作業、HIDDEN領域）
+    // 消去する範囲の列数を計算
+    const numColumns = lastColumn - startColumn + 1;
+
+    // 列数が1以上の場合のみ範囲をクリア
+    if (numColumns > 0) {
+      const range = scheduleSheet.getRange(
+        1,
+        startColumn,
+        scheduleSheet.getMaxRows(),
+        numColumns
+      );
+      range.clearContent();
+      range.clearFormat();
+    } else {
+      // すでにクリアされている場合は何もしない
+      return;
+    }
+  }
+
+  // 領域をクリアする関数
+  function clearCalendarArea() {
+    const clearRowIndex = calculateClearRowIndex();
+    const clearColumIndex = calculateClearColumnIndex();
+
     for (let i = SS_CALENDERDATE_ROW_INDEX; i < clearRowIndex; i++) {
       for (let j = SS_PRSRON_COLUMN_INDEX; j < clearColumIndex; j++) {
         scheduleSheetDataValues[i][j] = "";
         scheduleSheetAllBackGrounds[i][j] = COLOR_CLEAR;
       }
     }
+  }
 
-    let dateArray = [];
-    //開始日取得
-    let minDateObj = new Date(
-      scheduleSheetDataValues[SS_INPUTCALENDERDATE_ROW_INDEX][
-        SS_INPUTCALENDERDATE_COLUMN_INDEX
-      ]
+  // クリアする行のインデックスを計算する関数
+  function calculateClearRowIndex() {
+    return SS_CALENDERDATE_ROW_INDEX + SS_CLEAR_ROW_LENGTH <
+      scheduleSheetDataValues.length
+      ? SS_CALENDERDATE_ROW_INDEX + SS_CLEAR_ROW_LENGTH
+      : scheduleSheetDataValues.length;
+  }
+
+  // クリアする列のインデックスを計算する関数
+  function calculateClearColumnIndex() {
+    return SS_PRSRON_COLUMN_INDEX + SS_MAXDAYS + 1 <
+      scheduleSheetDataValues[0].length
+      ? SS_PRSRON_COLUMN_INDEX + SS_MAXDAYS + 1
+      : scheduleSheetDataValues[0].length;
+  }
+
+  // 開始日から日付の配列を取得する関数
+  function getDateArray(startDate, numberOfDays = SS_MAXDAYS) {
+    const minDateObj = new Date(
+      startDate ||
+        scheduleSheetDataValues[SS_INPUTCALENDERDATE_ROW_INDEX][
+          SS_INPUTCALENDERDATE_COLUMN_INDEX
+        ]
     );
-
-    for (let i = 0; i < SS_MAXDAYS; i++) {
-      let dateObj = new Date();
-      dateObj.setMonth(new Date(minDateObj.getMonth()));
-      dateObj.setDate(new Date(minDateObj.getDate() + i));
+    const dateArray = [];
+    for (let i = 0; i < numberOfDays; i++) {
+      const dateObj = new Date(minDateObj);
+      dateObj.setDate(minDateObj.getDate() + i);
       dateArray.push(dateObj);
     }
-    for (
-      let j = SS_CALENDERDATE_COLUMN_INDEX;
-      j < SS_CALENDERDATE_COLUMN_INDEX + SS_MAXDAYS;
-      j++
-    ) {
-      let dateArrayJ = j - SS_CALENDERDATE_COLUMN_INDEX;
-      scheduleSheetDataValues[SS_CALENDERDATE_ROW_INDEX][j] =
-        dateArray[dateArrayJ];
-    }
-    let dateColorArray = [];
-    for (let date of dateArray) {
-      let dateColor = isHoliday(date) ? COLOR_HOLIDAY : COLOR_CLEAR;
-      dateColorArray.push(dateColor);
+    return dateArray;
+  }
+
+  // カレンダーに日付を設定する関数
+  function setDatesOnCalendar(
+    dateArray,
+    startColumn = SS_CALENDERDATE_COLUMN_INDEX
+  ) {
+    const scheduleSize =
+      scheduleSheetDataValues[SS_CALENDERDATE_ROW_INDEX].length;
+    console.log(
+      `dateArray size: ${dateArray.length}, scheduleSize: ${scheduleSize}`
+    );
+
+    // dateArrayのサイズをscheduleSizeに合わせる
+    if (dateArray.length < scheduleSize) {
+      // 不足分のサイズをnullで埋める
+      dateArray = dateArray.concat(
+        new Array(scheduleSize - dateArray.length).fill(null)
+      );
     }
 
-    //領域に土日祝日設定
-    let cellColorArray = [];
-    for (let i = 0; i < SS_MAX_PERSONS * 2 + 1; i++) {
-      cellColorArray.push(dateColorArray);
+    // dateArrayをscheduleSheetDataValuesに設定する
+    for (let j = 0; j < dateArray.length; j++) {
+      if (startColumn + j < scheduleSize) {
+        scheduleSheetDataValues[SS_CALENDERDATE_ROW_INDEX][startColumn + j] =
+          dateArray[j];
+      } else {
+        console.error(
+          "dateArray has more dates than the schedule sheet can accommodate."
+        );
+        break;
+      }
     }
-    for (
-      let i = SS_CALENDERDATE_ROW_INDEX;
-      i < SS_CALENDERDATE_ROW_INDEX + SS_MAX_PERSONS * 2 + 1;
-      i++
-    ) {
-      for (
-        let j = SS_CALENDERDATE_COLUMN_INDEX;
-        j < SS_CALENDERDATE_COLUMN_INDEX + SS_MAXDAYS;
-        j++
-      ) {
-        let cellColorArrayI = i - SS_CALENDERDATE_ROW_INDEX;
-        let cellColorArrayJ = j - SS_CALENDERDATE_COLUMN_INDEX;
-        scheduleSheetAllBackGrounds[i][j] =
-          cellColorArray[cellColorArrayI][cellColorArrayJ];
+  }
+
+  // 土日や祝日の背景色を設定する関数
+  function setHolidayBackgroundColors(dateArray) {
+    console.log("---setHolidayBackgroundColors---");
+
+    // 日本の祝日を含むGoogleカレンダーのID
+    const id = "ja.japanese#holiday@group.v.calendar.google.com";
+    // 指定されたIDを持つカレンダーを取得し、cal変数に代入
+    const cal = CalendarApp.getCalendarById(id);
+
+    // 休日かどうかを判定し、背景色の配列を作成
+    const dateColorArray = dateArray.map((date) =>
+      isHoliday(date, cal) ? COLOR_HOLIDAY : COLOR_CLEAR
+    );
+
+    // 作業者一覧の行数を取得する
+    let personRows = getPersonRows(scheduleSheetDataValues);
+    console.log(personRows);
+
+    // 全ての行に対して背景色の配列を設定
+    const cellColorArray = Array.from(
+      { length: personRows },
+      () => dateColorArray
+    );
+
+    console.log("---setHolidayBackgroundColors end---");
+    return cellColorArray;
+  }
+  // 土日の判断
+  function isWeekend(date) {
+    const day = date.getDay();
+    return day === 0 || day === 6; // 0は日曜日、6は土曜日
+  }
+  // 土日だった場合は色をつける。
+  function setWeekendBackgroundColors(dateArray) {
+    console.log("---setWeekendBackgroundColors ---");
+
+    const dateColorArray = dateArray.map((date) =>
+      isWeekend(date) ? COLOR_HOLIDAY : COLOR_CLEAR
+    );
+    let personRows = getPersonRows(scheduleSheetDataValues);
+    const cellColorArray = Array.from(
+      { length: personRows },
+      () => dateColorArray
+    );
+    console.log("---setWeekendBackgroundColors end---");
+    return cellColorArray;
+  }
+
+  // 'CLW美術作業者一覧'と'他社ヘルプ'の行番号を設定する関数
+  function setRowNumbers(values) {
+    for (let i = 0; i < values.length; i++) {
+      const cellValue = values[i][0];
+
+      if (cellValue === SS_PERSON_START_KEYWORD) {
+        personRow = i + 1;
+      } else if (cellValue === SS_OTHER_CO_START_KEYWORD) {
+        otherRow = i + 1;
+      } else if (cellValue === SS_FREE_SPACE) {
+        freeSpaceRow = i + 1;
       }
     }
 
-    updateScheduleSheetWithDataValuesC();
+    const notFoundItems = [];
+    if (personRow === null) {
+      notFoundItems.push(`'${SS_PERSON_START_KEYWORD}'`);
+    }
+    if (otherRow === null) {
+      notFoundItems.push(`'${SS_OTHER_CO_START_KEYWORD}'`);
+    }
+    if (freeSpaceRow === null) {
+      notFoundItems.push(`'${SS_FREE_SPACE}'`);
+    }
+
+    if (notFoundItems.length > 0) {
+      throw new Error(`${notFoundItems.join("、")} が見つかりません`);
+    }
   }
+
+  // 作業者一覧の行数を取得する関数
+  function getPersonRows() {
+    if (personRow === null || otherRow === null) {
+      throw new Error("行番号が設定されていません");
+    }
+
+    return otherRow - personRow;
+  }
+
+  // カレンダー日付設定のメイン関数
+  function setCalendarDate() {
+    //clearCalendarArea();
+    setRowNumbers(scheduleSheetDataValues);
+    const dateArray = getDateArray();
+    setDatesOnCalendar(dateArray);
+    //const scheduleBackGrounds = setHolidayBackgroundColors(dateArray); //祝日有
+    const scheduleBackGrounds = setWeekendBackgroundColors(dateArray); //土日のみ //TODO:千葉さんに相談。
+    return scheduleBackGrounds;
+  }
+
+  // 2次元配列の全ての行を最も要素数が多い行の長さに合わせる関数
+  function alignArrayRows(array) {
+    // 最も要素数が多い行を見つける
+    const maxLength = Math.max(...array.map((row) => row.length));
+
+    // 全ての行を最も要素数が多い行の長さに合わせる
+    const alignedArray = array.map((row) => {
+      while (row.length < maxLength) {
+        row.push(""); // 空の要素を追加
+      }
+      return row;
+    });
+
+    return alignedArray;
+  }
+
+  // スプレッドシートの指定範囲に2次元配列のデータを書き込む関数
+  function setSchedule(sheet, values) {
+    // valuesの各行を最も要素数が多い行に合わせる
+    const alignedValues = alignArrayRows(values);
+
+    // 配列のサイズを取得
+    const numRows = alignedValues.length;
+    const numCols = alignedValues[0].length;
+
+    // シートの現在の列数が不足していれば、列を追加
+    if (sheet.getMaxColumns() < numCols) {
+      sheet.insertColumnsAfter(
+        sheet.getMaxColumns(),
+        numCols - sheet.getMaxColumns()
+      );
+    }
+
+    // スプレッドシートの書き込みたい範囲を再指定
+    const range = sheet.getRange(1, 1, numRows, numCols);
+
+    // データを書き込み
+    range.setValues(alignedValues);
+  }
+
+  // スプレッドシートの特定範囲に背景色の配列を設定する関数
+  function setScheduleBackGround(sheet, colors) {
+    // シートの対象範囲を指定
+    const startRow = SS_CALENDERDATE_ROW_INDEX + 1; // getRangeは1インデックス
+    const startCol = SS_CALENDERDATE_COLUMN_INDEX + 1; // getRangeは1インデックス
+    const numRows = colors.length;
+    const numCols = colors[0].length;
+    const range = sheet.getRange(startRow, startCol, numRows, numCols);
+
+    // 背景色を設定
+    range.setBackgrounds(colors);
+  }
+  //枠線の設定を行う
+  function setBorderStyles(sheet) {
+    // CLW美術作業者一覧と他社ヘルプに中太の上下のみの枠線を設定
+    [personRow, otherRow].forEach((row) => {
+      sheet
+        .getRange(row, 1, 1, sheet.getMaxColumns())
+        .setBorder(
+          true,
+          null,
+          true,
+          null,
+          null,
+          null,
+          null,
+          SpreadsheetApp.BorderStyle.SOLID_MEDIUM
+        );
+    });
+
+    // personRowとotherRowの間で3行おきに細線を下部に設定
+    for (let row = personRow + 3; row < otherRow - 1; row += 3) {
+      sheet
+        .getRange(row, 1, 1, sheet.getMaxColumns())
+        .setBorder(
+          null,
+          null,
+          true,
+          null,
+          null,
+          null,
+          null,
+          SpreadsheetApp.BorderStyle.SOLID
+        );
+    }
+
+    // otherRowとfreeSpaceRowの間で3行おきに細線を下部に設定
+    for (let row = otherRow + 3; row < freeSpaceRow - 1; row += 3) {
+      sheet
+        .getRange(row, 1, 1, sheet.getMaxColumns())
+        .setBorder(
+          null,
+          null,
+          true,
+          null,
+          null,
+          null,
+          null,
+          SpreadsheetApp.BorderStyle.SOLID
+        );
+    }
+
+    // 以下フリースぺースに2重の上下のみの枠線を設定
+    sheet
+      .getRange(freeSpaceRow, 1, 1, sheet.getMaxColumns())
+      .setBorder(
+        true,
+        null,
+        true,
+        null,
+        null,
+        null,
+        null,
+        SpreadsheetApp.BorderStyle.DOUBLE
+      );
+  }
+
+  // +1か月カレンダーに追加を行う関数
+  function addOneMonthCalender() {
+    const label = "addOneMonthCalender";
+    console.time(label);
+    // スプレッドシートの読み込み
+    let spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    // スケジュール表読み込み
+    let scheduleSheet = spreadsheet.getSheetByName(SS_SCHEDULE_SHEET_NAME);
+    //データベースシートの読み込み
+    let dataBaseSheet = spreadsheet.getSheetByName(DATA_BASE_SHEET_NAME);
+    // スケジュール表情報取得
+    getScheduleSheetInfoC(scheduleSheet, dataBaseSheet);
+    // 'CLW美術作業者一覧'と'他社ヘルプ'の行番号を設定する関数
+    setRowNumbers(scheduleSheetDataValues);
+
+    // 現在のスケジュールの最終日を取得
+    const { lastDate, lastDateColumnIndex } = getLastDateAndIndex(
+      scheduleSheetDataValues
+    );
+
+    const startDate = new Date(lastDate);
+    // 最終日の翌日をStartDateとする
+    startDate.setDate(lastDate.getDate() + 1);
+    // +1か月分の日付配列を取得
+    const dateArray = getDateArray(startDate, 30);
+    const dateArray2D = [dateArray];
+
+    // 色を設定する。
+    const scheduleBackGrounds = setWeekendBackgroundColors(dateArray); //土日
+    //const scheduleBackGrounds = setHolidayBackgroundColors(dateArray); //祝日有
+
+    //setSchedule(scheduleSheet,scheduleSheetDataValues)
+
+    // カレンダーに日付を設定
+    setScheduleFromPosition(
+      scheduleSheet,
+      dateArray2D,
+      SS_CALENDERDATE_ROW_INDEX + 1,
+      lastDateColumnIndex + 2
+    );
+    setBackgroundFromPosition(
+      scheduleSheet,
+      scheduleBackGrounds,
+      SS_CALENDERDATE_ROW_INDEX + 1,
+      lastDateColumnIndex + 2
+    );
+
+    // フォーマットを枠線を記入する
+    setBorderStyles(scheduleSheet);
+
+    console.timeEnd(label);
+
+    function getLastDateAndIndex(sheetDataValues) {
+      const rowIndex = SS_CALENDERDATE_ROW_INDEX;
+      let lastDateColumnIndex = sheetDataValues[rowIndex].length - 1;
+
+      // 空欄をスキップして最後の日付を探す
+      while (
+        lastDateColumnIndex >= 0 &&
+        !sheetDataValues[rowIndex][lastDateColumnIndex]
+      ) {
+        lastDateColumnIndex--;
+      }
+
+      if (lastDateColumnIndex < 0) {
+        throw new Error("日付が入力されているセルが見つかりません。");
+      }
+
+      const lastDateValue = sheetDataValues[rowIndex][lastDateColumnIndex];
+      const lastDate = new Date(lastDateValue);
+
+      return { lastDate, lastDateColumnIndex };
+    }
+
+    // スプレッドシートの指定された位置から2次元配列のデータを書き込む関数
+    function setScheduleFromPosition(sheet, values, startRow, startColumn) {
+      // 配列のサイズを取得
+      const numRows = values.length;
+      const numCols = values[0].length;
+
+      // シートの現在の列数と行数が不足していれば、列と行を追加
+      if (sheet.getMaxColumns() < startColumn + numCols - 1) {
+        sheet.insertColumnsAfter(
+          sheet.getMaxColumns(),
+          startColumn + numCols - 1 - sheet.getMaxColumns()
+        );
+      }
+      if (sheet.getMaxRows() < startRow + numRows - 1) {
+        sheet.insertRowsAfter(
+          sheet.getMaxRows(),
+          startRow + numRows - 1 - sheet.getMaxRows()
+        );
+      }
+
+      // スプレッドシートの書き込みたい範囲を再指定
+      const range = sheet.getRange(startRow, startColumn, numRows, numCols);
+
+      // データを書き込み
+      range.setValues(values);
+    }
+    // スプレッドシートの指定された位置から2次元配列の背景色を設定する関数
+    function setBackgroundFromPosition(sheet, colors, startRow, startColumn) {
+      // 配列のサイズを取得
+      const numRows = colors.length;
+      const numCols = colors[0].length;
+
+      // シートの現在の列数と行数が不足していれば、列と行を追加
+      if (sheet.getMaxColumns() < startColumn + numCols - 1) {
+        sheet.insertColumnsAfter(
+          sheet.getMaxColumns(),
+          startColumn + numCols - 1 - sheet.getMaxColumns()
+        );
+      }
+      if (sheet.getMaxRows() < startRow + numRows - 1) {
+        sheet.insertRowsAfter(
+          sheet.getMaxRows(),
+          startRow + numRows - 1 - sheet.getMaxRows()
+        );
+      }
+
+      // スプレッドシートの設定したい範囲を再指定
+      const range = sheet.getRange(startRow, startColumn, numRows, numCols);
+
+      // 背景色を設定
+      range.setBackgrounds(colors);
+    }
+  }
+
   //カレンダー生成↑
 
-  //スケジュール表の画面を更新する
-  // function updateScheduleSheetWithDataValues() {
-  //   scheduleSheetAllRange.setValues(scheduleSheetDataValues);
-  //   scheduleSheetAllRange.setBackgrounds(scheduleSheetAllBackGrounds);
-  //   dataBaseSheetAllRange.setValues(dataBaseSheetDataValues);
-    
-  // }
   // スケジュール表情報を進行表の値で更新
   function updateDateValues(storyInfo) {
     // 「以下フリースペース」が一列目に書いてある行を取得
     freeSpaceRowIndex = scheduleSheetDataValues.findIndex(
       (row) => row[0] == SS_FREE_SPACE
     );
-
-    //console.log('---- updateDateValues IN ----')
 
     for (let storyInfoPerson of storyInfo.persons) {
       //console.log('storyInfoPerson='+storyInfoPerson.personName)
@@ -340,38 +701,47 @@ function updateScheduleSheetDeadline() {
         updatePersonTasks(storyInfo, storyInfoPerson, rowIndex);
       }
     }
-    //console.log('---- updateDateValues OUT ----')
   }
 
   // 対象の担当者のシーン情報を削除する
   function deletePersonTasks(storyInfo, person, rowIndex) {
     //console.log('---- deletePersonTasks IN ----')
+    const sceneTitles = [];
     for (let scene of person.scenes) {
       if (!scene.replaceScene) {
         continue;
       }
-      let sceneTitle = storyInfo.storyName + DELIMITER + scene.sceneName; 
-      for (
-        let i = SS_CALENDERDATE_COLUMN_INDEX;
-        i < SS_CALENDERDATE_COLUMN_INDEX + SS_MAXDAYS;
-        i++
+      sceneTitles.push(storyInfo.storyName + DELIMITER + scene.sceneName);
+    }
+    if (sceneTitles.length == 0) {
+      return;
+    }
+    for (
+      let i = SS_CALENDERDATE_COLUMN_INDEX;
+      i < SS_CALENDERDATE_COLUMN_INDEX + SS_MAXDAYS;
+      i++
+    ) {
+      let tmpSceneTitle = dataBaseSheetDataValues[rowIndex][i];
+      if (
+        tmpSceneTitle &&
+        sceneTitles.findIndex((sceneTitle) =>
+          tmpSceneTitle.startsWith(sceneTitle)
+        ) > -1
       ) {
-        let tmpSceneTitle = dataBaseSheetDataValues[rowIndex - DATA_BASE_FORMAT_OFFSET][i];  //TODO:dataBaseとスケジュール表はデータ行が合わないので調整要
-        if (tmpSceneTitle && tmpSceneTitle.startsWith(sceneTitle)) {  // startsWithメソッドを使用してチェック
-          // セルの内容をクリア
-          scheduleSheetDataValues[rowIndex][i] = "";
-          scheduleSheetDataValues[rowIndex + 1][i] = "";
-          dataBaseSheetDataValues[rowIndex - DATA_BASE_FORMAT_OFFSET][i] = "";
-          dataBaseSheetDataValues[rowIndex + 1 - DATA_BASE_FORMAT_OFFSET][i] = "";
-          // セルの背景色をクリア
-          scheduleSheetAllBackGrounds[rowIndex][i] = COLOR_CLEAR;
-          scheduleSheetAllBackGrounds[rowIndex + 1][i] = COLOR_CLEAR;
-        }
+        // startsWithメソッドを使用してチェック
+        // セルの内容をクリア
+        scheduleSheetDataValues[rowIndex][i] = "";
+        scheduleSheetDataValues[rowIndex + 1][i] = "";
+        dataBaseSheetDataValues[rowIndex][i] = "";
+        dataBaseSheetDataValues[rowIndex + 1][i] = "";
+        // セルの背景色をクリア
+        scheduleSheetAllBackGrounds[rowIndex][i] = COLOR_CLEAR;
+        scheduleSheetAllBackGrounds[rowIndex + 1][i] = COLOR_CLEAR;
       }
     }
   }
-  
 
+  //TODO:開始日がスケジュール表にない場合はエラーのダイアログを出すようにする。
   // 対象の担当者のシーン情報を更新する
   function updatePersonTasks(storyInfo, person, rowIndex) {
     //console.log('---- updatePersonTasks IN ----')
@@ -398,34 +768,43 @@ function updateScheduleSheetDeadline() {
           break;
         }
       }
+      // 開始日がスケジュール表にない場合はエラーのダイアログを出す
+      if (startColumnIndex === undefined) {
+        SpreadsheetApp.getUi().alert(
+          "開始日がスケジュール表に見つかりません: " + sceneStartDateStr
+        );
+        continue; // 次のシーンへスキップ
+      }
 
       // 開始日から総工数（日）だけセルに色を塗る
       if (scene.totalDays > 0) {
-        
-        let sceneTitle = storyInfo.storyName + DELIMITER + scene.sceneName + DELIMITER + "日分" + DELIMITER + formatDate(scene.startDate);
-        for (let i = 0; i < scene.totalDays; i++) {
-          let checkColumnIndex = startColumnIndex + i;
-          if (scene.warikomi) {
-            moveCellC(
-              rowIndex,
-              checkColumnIndex,
-              storyInfo.storyColor,
-              sceneTitle,
-              scene.manHoursColor[i]
-            );
-          } else {
-            while (
-              !findAndFillClearCellC(
-                rowIndex,
-                checkColumnIndex,
-                storyInfo.storyColor,
-                sceneTitle,
-                scene.manHoursColor[i]
-              )
-            ) {
-              checkColumnIndex++;
-            }
-          }
+        let sceneTitle =
+          storyInfo.storyName +
+          DELIMITER +
+          scene.sceneName +
+          DELIMITER +
+          scene.totalDays +
+          "日分" +
+          DELIMITER +
+          formatDate(scene.startDate);
+        if (scene.warikomi) {
+          warikomiMoveCellC(
+            rowIndex,
+            startColumnIndex,
+            Number(scene.totalDays),
+            storyInfo.storyColor,
+            sceneTitle,
+            scene.manHoursColor
+          );
+        } else {
+          fillClearCellC(
+            rowIndex,
+            startColumnIndex,
+            Number(scene.totalDays),
+            storyInfo.storyColor,
+            sceneTitle,
+            scene.manHoursColor
+          );
         }
       }
 
@@ -438,128 +817,23 @@ function updateScheduleSheetDeadline() {
       if (!(date instanceof Date)) {
         date = new Date(date);
       }
-    
+
       let year = date.getFullYear();
-      let month = (date.getMonth() + 1).toString().padStart(2, '0');  // 月は0から始まるため、1を加えます
-      let day = date.getDate().toString().padStart(2, '0');
-    
+      let month = (date.getMonth() + 1).toString().padStart(2, "0"); // 月は0から始まるため、1を加えます
+      let day = date.getDate().toString().padStart(2, "0");
+
       return `${year}-${month}-${day}`;
     }
   }
 
-  //先頭セルにシーン名を表示する
-  // function displaySceneName(rowIndex) {
-  //   let prevSceneTitle = "";
-  //   for (
-  //     let columnIndex = SS_CALENDERDATE_COLUMN_INDEX;
-  //     columnIndex < SS_CALENDERDATE_COLUMN_INDEX + SS_MAXDAYS;
-  //     columnIndex++
-  //   ) {
-  //     let sceneTitle =
-  //       dataBaseSheetDataValues[rowIndex - DATA_BASE_FORMAT_OFFSET][columnIndex];
-  //     if (sceneTitle != prevSceneTitle) {
-  //       scheduleSheetDataValues[rowIndex][columnIndex] = sceneTitle;
-  //     }
-  //     prevSceneTitle = sceneTitle;
-  //   }
-  // }
-
-  // //セルを隣に移動 //TODO:共通の切り出しとしてつかるか検討
-  // function moveCell(rowIndex, index, existColor, sceneTitle, manHourColor) {
-  //   let nextExistColor = scheduleSheetAllBackGrounds[rowIndex][index];
-  //   //土日祝日だけ割り込み禁止
-  //   if (nextExistColor == COLOR_HOLIDAY) {
-  //     index++;
-  //     moveCell(rowIndex, index, existColor, sceneTitle, manHourColor);
-  //     return;
-  //   }
-  //   let nextSceneTitle = undefined;
-  //   let nextManHourColor = undefined;
-  //   let nextDataBaseSceneTitle =undefined;
-  //   if (nextExistColor != COLOR_CLEAR) {
-  //     nextSceneTitle = scheduleSheetDataValues[rowIndex][index];
-  //     nextManHourColor = scheduleSheetAllBackGrounds[rowIndex + 1][index];
-  //     //nextDataBaseSceneTitle = scheduleSheetDataValues[rowIndex][index];
-  //     nextDataBaseSceneTitle = dataBaseSheetDataValues[rowIndex][index];
-      
-  //   }
-  //   setSell(rowIndex, index, existColor, sceneTitle, manHourColor);
-  //   if (nextExistColor != COLOR_CLEAR) {
-  //     index++;
-  //     if (nextSceneTitle != undefined && nextSceneTitle != "") {
-  //       moveCell(rowIndex, index, nextExistColor, nextSceneTitle, nextManHourColor);
-  //     } else {
-  //       moveCell(
-  //         rowIndex,
-  //         index,
-  //         nextExistColor,
-  //         nextDataBaseSceneTitle,
-  //         nextManHourColor
-  //       );
-  //     }
-  //   }
-  // }
-
-  // 空白のセルを探して色を塗る
-  // function findAndFillClearCell(
-  //   rowIndex,
-  //   checkColumnIndex,
-  //   storyInfoColor,
-  //   sceneTitle,
-  //   manHourColor
-  // ) {
-  //   let existColor = scheduleSheetAllBackGrounds[rowIndex][checkColumnIndex];
-  //   if (existColor != COLOR_CLEAR) {
-  //     return false;
-  //   } else {
-  //     setSell(
-  //       rowIndex,
-  //       checkColumnIndex,
-  //       storyInfoColor,
-  //       sceneTitle,
-  //       manHourColor
-  //     );
-  //     return true;
-  //   }
-  // }
-
-  //セルに値を設定。表示用シーン名はクリア（後で一気に付ける）
-  // function setSell(rowIndex, columnIndex, setColor, sceneTitle, manHourColor) {
-  //   scheduleSheetDataValues[rowIndex][columnIndex] = "";
-  //   scheduleSheetAllBackGrounds[rowIndex][columnIndex] = setColor;
-  //   scheduleSheetAllBackGrounds[rowIndex + 1][columnIndex] = manHourColor;
-  //   dataBaseSheetDataValues[rowIndex - DATA_BASE_FORMAT_OFFSET][columnIndex] = sceneTitle;
-  // }
-
-  // // スケジュール表情報取得
-  // function getScheduleSheetInfo(scheduleSheet,dataBaseSheet) {
-  //   // スプレッドシート上でデータが入力されている最大範囲を選択
-  //   scheduleSheetAllRange = scheduleSheet.getDataRange();
-  //   // 値を取得
-  //   scheduleSheetDataValues = scheduleSheetAllRange.getValues();
-  //   // 背景色を取得する
-  //   scheduleSheetAllBackGrounds = scheduleSheetAllRange.getBackgrounds();
-
-  //   // scheduleSheetAllRange の範囲情報を取得
-  //   var scheduleNumRows = scheduleSheetAllRange.getNumRows();
-  //   var scheduleNumColumns = scheduleSheetAllRange.getNumColumns();
-    
-    // dataBaseSheet の範囲を scheduleSheetAllRange の範囲で取得
-    //TODO:
-    //dataBaseSheetAllRange = dataBaseSheet.getRange(1, 1, scheduleNumRows, scheduleNumColumns);
-    // 値を取得
-    //dataBaseSheetDataValues = dataBaseSheetAllRange.getValues();
-  //}
-
   //土日祝日判定
-  function isHoliday(date) {
+  function isHoliday(date, calenderId) {
     //土日の判定
     const day = date.getDay();
     if (day === 0 || day === 6) return true;
     //祝日の取得。ここを使うにはGoogleDrive上で一度「カレンダー」にアクセスする必要あり
-    const id = "ja.japanese#holiday@group.v.calendar.google.com";
-    const cal = CalendarApp.getCalendarById(id);
-    const events = cal.getEventsForDay(date);
+
+    const events = calenderId.getEventsForDay(date);
     //なんらかのイベントがある＝祝日
     if (events.length) return true;
 
@@ -608,15 +882,17 @@ function updateScheduleSheetDeadline() {
       let scene = new Scene();
       scene.sceneName = progressSheetDataValues[i][PS_SCENENAME_COLUMN_INDEX];
       scene.startDate = progressSheetDataValues[i][PS_STARTDATE_COLUMN_INDEX];
-      scene.totalDays = progressSheetDataValues[i][PS_TOTALDAYS_COLUMN_INDEX] + progressSheetDataValues[i][PS_SCENE_REARANGE_MANHOUR_COLUMN_INDEX];  //総工数＋再調整の値にする
+      scene.totalDays =
+        progressSheetDataValues[i][PS_TOTALDAYS_COLUMN_INDEX] +
+        progressSheetDataValues[i][PS_SCENE_REARANGE_MANHOUR_COLUMN_INDEX]; //総工数＋再調整の値にする
       scene.warikomi = progressSheetDataValues[i][PS_WARIKOMI_COLUMN_INDEX];
       scene.replaceScene =
         progressSheetDataValues[i][PS_REPLACESCENE_COLUMN_INDEX];
       // 工数背景色
       const manHoursEndIndex = progressSheetDataValues[i].findIndex(
         (data, index) => data != "" && index >= PS_SCENE_MANHOUR_COLUMN_INDEX
-      );  //工数背景色が何列目までにあるか取得する。
-      
+      ); //工数背景色が何列目までにあるか取得する。
+
       scene.manHoursColor = progressSheetAllBackGrounds[i].slice(
         PS_SCENE_MANHOUR_COLUMN_INDEX,
         manHoursEndIndex + 1
@@ -681,7 +957,7 @@ function updateScheduleSheetDeadline() {
     // データベース表読み込み
     const dataBaseSheet = spreadsheet.getSheetByName(DATA_BASE_SHEET_NAME);
     // スケジュール表情報取得
-    getScheduleSheetInfoC(scheduleSheet,dataBaseSheet);
+    getScheduleSheetInfoC(scheduleSheet, dataBaseSheet);
 
     // カレンダー部分とメモの切り出し
     const cal = scheduleSheetDataValues[SS_CALENDERDATE_ROW_INDEX];
@@ -751,5 +1027,4 @@ function updateScheduleSheetDeadline() {
       date1.getDate() === date2.getDate()
     );
   }
-
 }
