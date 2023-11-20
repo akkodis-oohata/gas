@@ -239,7 +239,7 @@ function updateProgressSheetMain(){
     let spreadsheet = SpreadsheetApp.getActiveSpreadsheet()
     // 進行表読み込み  //動的に読み込む必要あり。
     //let sheet = spreadsheet.getSheetByName(PROGRESS_SHEET_NAME)
-    let sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    let sheet = spreadsheet.getActiveSheet();
 
     // シートの全データ、背景色取得
     getAllDataAndBackground(sheet)
@@ -283,7 +283,7 @@ function updateProgressSheetMain(){
     drawProgressCells(sheet)
 
     //実行日と時間を前回算出実行日を記入する
-    displayCurrentDateTime(sheet)
+    displayCurrentDateTimeC(sheet,SCENE_LAST_CALCULATION_DATE_ROW_NUM,SCENE_LAST_CALCULATION_DATE_COLUMN_NUM)
 
     console.timeEnd(label)
 
@@ -294,15 +294,7 @@ function updateProgressSheetMain(){
 
   
 
-  //実行日と時間を前回算出実行日を記入する
-  function displayCurrentDateTime(sheet) {
-    // 現在の日付と時間を取得
-    var now = new Date();
-    // 指定されたフォーマットに変換
-    var formattedDate = Utilities.formatDate(now, SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(), "yyyy/MM/dd HH:mm");
-    // 日付と時間を設定
-    sheet.getRange(SCENE_LAST_CALCULATION_DATE_ROW_NUM,SCENE_LAST_CALCULATION_DATE_COLUMN_NUM).setValue(formattedDate);
-  }
+
 
 
   // 表上にあるすべての値と背景色を取得する関数

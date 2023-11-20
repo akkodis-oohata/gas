@@ -28,17 +28,17 @@ function UpdateDataBaseMain(){
     getScheduleSheetInfoC(sourceSheet, dataBaseSheet);
     
     // KEY：話数#,シーン名、VALUE：日数,開始日でハッシュ値作成
-    //let episodeSceneScheduleMap = createEpisodeSceneScheduleMap(dataBaseSheetDataValues);
+    let episodeSceneScheduleMap = createEpisodeSceneScheduleMap(dataBaseSheetDataValues);
 
-    //dataBaseSheetの値を全削除
-    dataBaseSheet.clearContents();
     
     //以下フリースペース部分を削除
     scheduleSheetDataValues = removeRowsAfterFreeSpace(scheduleSheetDataValues)
     
     // 特定のstoryColorに基づいて、対応するセルにデータを埋め込む関数。
-    scheduleSheetDataValues = fillValuesForStoryColors(scheduleSheetDataValues,scheduleSheetAllBackGrounds)
-
+    scheduleSheetDataValues = fillValuesForStoryColors(scheduleSheetDataValues,scheduleSheetAllBackGrounds,episodeSceneScheduleMap)
+    //dataBaseSheetの値を全削除
+    dataBaseSheet.clearContents();
+    
     // データをデータベースシートにセット
     setDataToSheet(dataBaseSheet, scheduleSheetDataValues);
   
@@ -52,7 +52,7 @@ function UpdateDataBaseMain(){
     for (let i = 0; i < copiedData.length; i++) {
 
       if (copiedData[i][0] === FREE_SPACE_KEYWORD) {
-        copiedData.splice(i);
+        copiedData.splice(i+1);
         break;
       }
     }
@@ -60,35 +60,80 @@ function UpdateDataBaseMain(){
   }
 
   // 特定のstoryColorに基づいて、対応するセルにデータを埋め込む関数。
-  function fillValuesForStoryColors(editedData, scheduleSheetAllBackGrounds) {
+  function fillValuesForStoryColors(scheduleSheetDataValues, scheduleSheetAllBackGrounds,episodeSceneScheduleMap) {
     const startColumnIndex = DATABASE_START_COLUMN_INDEX;
-    const startRowIndex = DATABASE_START_ROW_INDEX;
+    const sceneRows = getSceneRows(scheduleSheetDataValues);
 
-    for (let i = startRowIndex; i < editedData.length; i++) {
+    sceneRows.forEach(rowIdx => {
       let storyColor = undefined;
       let storyValue = undefined;
-      for (let j = startColumnIndex; j < editedData[i].length; j++) {
-        let scheduleValue = editedData[i][j];
-        let currentCellColor = scheduleSheetAllBackGrounds[i][j];
-        // 透明だった場合、または土日の色だった場合、次のセルへ
+      for (let j = startColumnIndex; j < scheduleSheetDataValues[rowIdx].length; j++) {
+        let scheduleValue = scheduleSheetDataValues[rowIdx][j];
+        let currentCellColor = scheduleSheetAllBackGrounds[rowIdx][j];
         if (!currentCellColor || currentCellColor === "#ffffff" || currentCellColor === COLOR_HOLIDAY) continue;
-        
-        // storyColorが異なる場合、これをアップデートします
+  
         if (storyColor !== currentCellColor) {
-            storyColor = currentCellColor;
+          storyColor = currentCellColor;
         }
-        // 値が入っている時は更新します。
-        if (scheduleValue){
+        if (scheduleValue) {
           storyValue = scheduleValue;
         }
-        //条件が合致する為、データベース用にシーンの一番最初に書いてある情報を格納します。
-        if(scheduleSheetAllBackGrounds[i][j] === storyColor){
-          editedData[i][j] = storyValue;
+        if (scheduleSheetAllBackGrounds[rowIdx][j] === storyColor) {
+          scheduleSheetDataValues[rowIdx][j] = createDatabaseTitle(storyValue, scheduleSheetDataValues, rowIdx, episodeSceneScheduleMap);
         }
       }
-    }
+    });
 
-    return editedData;
+    return scheduleSheetDataValues;
+    // ストーリーの情報からデータベースタイトルを作成する関数
+    function createDatabaseTitle(storyValue, scheduleSheetDataValues, i, episodeSceneScheduleMap) {
+      if (storyValue === "" || storyValue === undefined) {
+        return ""; // storyValueが空文字の場合は、早期に空文字を返す
+      }
+      let parts = storyValue.split(",");
+      // 分割した値をそれぞれの変数に格納
+      let episodeNumber = parts[0];
+      let sceneName = parts[1];
+      let personName = scheduleSheetDataValues[i][DATABASE_START_COLUMN_INDEX];
+      let databaseTitle = undefined;
+      // スケジュール表からキーを作成
+      let storyKey = `${episodeNumber},${sceneName},${personName}`;
+        if (!episodeSceneScheduleMap.hasOwnProperty(storyKey)) {
+          // データベースに初めて登録するデータ
+          databaseTitle = `${episodeNumber},${sceneName},${undefined},${undefined}`;
+        }else{
+          // データベースあるデータ
+          // データベースに記載があった内容からデータベースのタイトルを算出
+          let databaseParts = episodeSceneScheduleMap[storyKey].split(",");
+          let datadays = databaseParts[0];
+          let datastartdate = databaseParts[1];
+          // 総日数は変えたくないので、話数#,シーン名,総日数、開始日とする。
+          databaseTitle = `${episodeNumber},${sceneName},${datadays},${datastartdate}`;
+        }
+      return databaseTitle;
+    }
+    // シーン行を取得してシーン行を返す関数
+    function getSceneRows(scheduleSheetDataValues){
+      let startRowIndex = scheduleSheetDataValues.findIndex(
+        (row) => row[0] === CLW_ARTWORK_PERSONS_TITLE
+      );
+      let endRowIndex = scheduleSheetDataValues.findIndex(
+        (row) => row[0] === FREE_SPACE_TITLE
+      );
+      let personRows = [];
+      // シーン行取得
+      if (startRowIndex !== -1 && endRowIndex !== -1) {
+        for (let i = startRowIndex + 1; i < endRowIndex; i++) {
+          if (
+            scheduleSheetDataValues[i][PERSON_COLUMN_INDEX] != "" &&
+            scheduleSheetDataValues[i][PERSON_COLUMN_INDEX] != MEMO_SPACE_TITLE
+          ) {
+            personRows.push(i);
+          }
+        }
+      }
+      return personRows
+    }
   }
 
   // KEY：話数#,シーン名、VALUE：日数,開始日でハッシュ値作成
@@ -98,7 +143,7 @@ function UpdateDataBaseMain(){
     // すべての行に対して
     dataBaseSheetDataValues.forEach(row => {
       //同じ行の作業者の名前を取得する。
-      let personName = row[6]
+      let personName = row[DATABASE_START_COLUMN_INDEX]
       // すべての列（セル）に対して
       row.forEach(cellValue => {
         // セルが空でなく、文字列である場合のみ処理
@@ -114,9 +159,9 @@ function UpdateDataBaseMain(){
             let days = parts[2];
             let startDate = parts[3];
     
-            // KEY：話数#,シーン名,作業者名、VALUE：開始日
+            // KEY：話数#,シーン名,作業者名、VALUE：日分,開始日
             let key = `${episodeNumber},${sceneName},${personName}`;
-            let value = `${startDate}`;
+            let value = `${days},${startDate}`;
     
             episodeSceneScheduleMap[key] = value;
           }

@@ -1,5 +1,10 @@
 function updateManHoursAllSheetMain() {
-  updateManHoursAllSheet();
+  try {
+    updateManHoursAllSheet();
+  } catch (error) {
+    let ui = SpreadsheetApp.getUi();
+    ui.alert(error.message);
+  }
 }
 
 {
@@ -15,7 +20,7 @@ function updateManHoursAllSheetMain() {
   const SCENE_TITLE_COLUMN = 1;
   const SCENE_START_BODY_ROW_NUM = 7;
   const SCENE_START_BODY_COLUMN_NUM = 1;
-  const SCENE_END_BODY_ROW_NUM = 60; //適当な値
+  //const SCENE_END_BODY_ROW_NUM = 60; //適当な値  //TODO:求める方法を探す。
   const SCENE_END_BODY_COLUMN_NUM = 17;
   const SCENE_START_MANHOUR_COLUMN_NUM = 21;
   const SCENE_END_MANHOUR_COLUMN_NUM = 170;
@@ -93,11 +98,14 @@ function updateManHoursAllSheetMain() {
     let pasteBg = [];
     let pasteColor = [];
     progress_sheets.forEach((progress_sheet) => {
+      // 進行表シーン名の最後の行を取得する。
+      let sceneEndBodyRowNum = getPsSceneRowsIndex(progress_sheet) + 1
+
       // 進行表のデータを取得
       const progressDataRange = progress_sheet.getRange(
         SCENE_TITLE_ROW_NUM,
         SCENE_TITLE_COLUMN,
-        SCENE_END_BODY_ROW_NUM - SCENE_TITLE_ROW_NUM + 1,
+        sceneEndBodyRowNum - SCENE_TITLE_ROW_NUM + 1,
         SCENE_END_MANHOUR_COLUMN_NUM - SCENE_TITLE_ROW_NUM + 1
       );
       // 値・背景色をを取得

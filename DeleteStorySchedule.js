@@ -6,10 +6,13 @@ function DeleteStoryScheduleMain(){
   //定数定義（進行表）
   //-----------------
   //削除後詰めのチェックボックスの場所
-  const TSUME_DEL_ON_ROW_INDEX = 1;
-  const TSUME_DEL_ON_COLUMN_INDEX = 16;
+  const TSUME_DEL_ON_ROW = 2;
+  const TSUME_DEL_ON_COLUMN = 17;
   const DATA_BASE_SHEET_NAME = "データベース"
   const SCHEDULE_SHEET_NAME = "スケジュール管理仕様"
+
+  const STORY_TITLE_ROW = 1;
+  const STORY_TITLE_COLUMN = 1;
   
   function DeleteStorySchedule(){
     const label = 'DeleteStorySchedule';
@@ -23,18 +26,24 @@ function DeleteStoryScheduleMain(){
     
     //グローバル変数のスケジュール表とデータベースシートを作成
     getScheduleSheetInfoC(schedulesheet,databaseSheet)
-
-    //削除後詰めONかどうかを確認する
-    let tsumeDelOn = tsumeDelCheck(sourceSheet)
     
     //指定されたsourceSheetのA1セルの値とdatabaseSheetのデータを比較して、一致する範囲を返す
     let foundRanges = findRangesMatchingSourceValue(sourceSheet,databaseSheet)
+
+    if(isRangesFixedC(dataBaseSheetDataValues, foundRanges)){
+      // ダイアログを出して続行するかユーザーに確認
+      if(!confirmFixedCellExecutionC()){
+        return;//後の処理を実行しない。
+      }
+    }
     
-    // 上記のfindCellsWithColorAndLog()関数でfoundRangesを取得した後に、logFoundRanges()関数を呼び出す
-    //logFoundRanges(foundRanges);
+    // スケジュールが何日まで記載があるか確認する。
+    const maxDays = getLastFilledColumnInCalender(schedulesheet,SS_CALENDERDATE_COLUMN_INDEX);  //カレンダーの最大サイズを確認する。
     
+    //削除後詰めONかどうかを確認する
+    let tsumeDelOn = tsumeDelCheck(sourceSheet)
     //スケジュール管理仕様用にoffsetする
-    processAndDeleteCellsInRanges(foundRanges,schedulesheet,tsumeDelOn)
+    processAndDeleteCellsInRanges(foundRanges,schedulesheet,tsumeDelOn,maxDays)
   
     // 更新したスケジュール表情報で画面更新
     updateScheduleSheetWithDataValuesC();
@@ -47,15 +56,15 @@ function DeleteStoryScheduleMain(){
 
   //削除後詰めがONかどうか確認する
   function tsumeDelCheck(sourceSheet){
-    //一か所であれば、getValuesするよりもいいかと思い下記に変更。
-    let tsumeDelOn = sourceSheet.getRange("Q2").getValue();
+    // 指定した行と列からセルの値を取得する
+    let tsumeDelOn = sourceSheet.getRange(TSUME_DEL_ON_ROW, TSUME_DEL_ON_COLUMN).getValue();
     return tsumeDelOn
   }
 
   // 指定されたsourceSheetのA1セルの値とdatabaseSheetのデータを比較して、一致する範囲を返す
   function findRangesMatchingSourceValue(sourceSheet,databaseSheet) {
     // 対象となる値を進行表の機能検討用 2シートから取得
-    const targetValue = sourceSheet.getRange('A1').getValue();
+    const targetValue = sourceSheet.getRange(STORY_TITLE_ROW, STORY_TITLE_COLUMN).getValue();
     // データベースシートのデータを2次元配列として取得
     const dabaseData = dataBaseSheetDataValues;
   
@@ -121,7 +130,7 @@ function DeleteStoryScheduleMain(){
     });
   }
   
-  function processAndDeleteCellsInRanges(foundRanges, schedulesheet, tsumeDelOn) {
+  function processAndDeleteCellsInRanges(foundRanges, schedulesheet, tsumeDelOn, maxDays) {
     // 逆側からrangesを削除して行くことで、削除後詰めを行えるようにする。
     let reversedFoundRanges = [...foundRanges].reverse();
     
@@ -143,7 +152,7 @@ function DeleteStoryScheduleMain(){
       }
       // 先頭の名前更新
       let rowIndex = targetScheduleRange.getRow() - 1;
-      displaySceneNameC(rowIndex);
+      displaySceneNameC(rowIndex,maxDays);
     });
   }
 

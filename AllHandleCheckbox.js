@@ -1,6 +1,11 @@
 // 編集時にAllHandleCheckbox関数をトリガーします。
 function onEdit(e) {
-  allHandleCheckbox(e);
+  try {
+    allHandleCheckbox(e);
+  } catch (error) {
+    let ui = SpreadsheetApp.getUi();
+    ui.alert(error.message);
+  }
 }
 
 {
