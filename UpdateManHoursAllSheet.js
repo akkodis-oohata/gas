@@ -1,10 +1,15 @@
 function updateManHoursAllSheetMain() {
+  const label = "updateManHoursAllSheetMain";
+  console.time(label);
+
   try {
     updateManHoursAllSheet();
   } catch (error) {
     let ui = SpreadsheetApp.getUi();
     ui.alert(error.message);
   }
+
+  console.timeEnd(label);
 }
 
 {
@@ -13,8 +18,12 @@ function updateManHoursAllSheetMain() {
   //-----------------
   //進行表
   //進行表シート名
-  const PROGRESS_SHEET_NAME = "進行表";
-  const PROGRESS_SHEET_BLANKNAME = "進行表フォーマット(白紙)  ";
+  // const PROGRESS_SHEET_NAME = "進行表";
+  // const PROGRESS_SHEET_BLANKNAME = "進行表フォーマット(白紙)  ";
+  //進行表マーク名
+  const PROGRESS_SHEET_MARK = "進行表";
+  const PROGRESS_SHEET_MARK_ROW_NUM = 1;
+  const PROGRESS_SHEET_MARK_COLUMN_NUM = 3;
   //シーン情報
   const SCENE_TITLE_ROW_NUM = 1;
   const SCENE_TITLE_COLUMN = 1;
@@ -50,13 +59,14 @@ function updateManHoursAllSheetMain() {
     let spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
 
     // 進行表読み込み
-    const progress_sheets = spreadsheet
-      .getSheets()
-      .filter(
-        (sheet) =>
-          sheet.getName().indexOf(PROGRESS_SHEET_NAME) > -1 &&
-          sheet.getName() != PROGRESS_SHEET_BLANKNAME
-      );
+    // const progress_sheets = spreadsheet
+    //   .getSheets()
+    //   .filter(
+    //     (sheet) =>
+    //       sheet.getName().indexOf(PROGRESS_SHEET_NAME) > -1 &&
+    //       sheet.getName() != PROGRESS_SHEET_BLANKNAME
+    //   );
+    const progress_sheets = spreadsheet.getSheets();
 
     // 全工数表読み込み
     const manhour_all_sheet = spreadsheet.getSheetByName(
@@ -97,9 +107,32 @@ function updateManHoursAllSheetMain() {
     let pasteVal = [];
     let pasteBg = [];
     let pasteColor = [];
+    let errorMessages = [];
     progress_sheets.forEach((progress_sheet) => {
-      // 進行表シーン名の最後の行を取得する。
-      let sceneEndBodyRowNum = getPsSceneRowsIndex(progress_sheet) + 1
+      // 進行表シートか確認する。
+      const markRange = progress_sheet.getRange(
+        PROGRESS_SHEET_MARK_ROW_NUM,
+        PROGRESS_SHEET_MARK_COLUMN_NUM
+      );
+      if (markRange.getValue() != PROGRESS_SHEET_MARK) {
+        //進行表マークがなければSkipする
+        return;
+      }
+
+      // 話数・シーン名チェック
+      const sheetErrorMessages = checkSceneName(progress_sheet, true);
+      if (sheetErrorMessages.length > 0) {
+        errorMessages.push(...sheetErrorMessages);
+        return;
+      }
+      // コピー行範囲：B列（シーン名）データのヘッダ行以降のデータ最終行
+      const progressRowIndex = getPsSceneRowsIndex(progress_sheet);
+      // 進行表シーン名の最後の行
+      let sceneEndBodyRowNum = progressRowIndex + 1;
+      const progressRowRange =
+        sceneEndBodyRowNum - SCENE_START_BODY_ROW_NUM + 1;
+      // コピー行が無ければ次のシートへ
+      if (progressRowRange <= 0) return;
 
       // 進行表のデータを取得
       const progressDataRange = progress_sheet.getRange(
@@ -113,19 +146,9 @@ function updateManHoursAllSheetMain() {
       const progressAllBackGrounds = progressDataRange.getBackgrounds();
       const titleFontColor = progressDataRange.getFontColorObject();
 
-      // コピー行範囲：B列（シーン名）データのヘッダ行以降のデータ最終行
-      const progressRowIndex = progressAllValues.findIndex(
-        (data, index) =>
-          data[SCENENAME_COLUMN_NUM - 1] === "" &&
-          index >= SCENE_START_BODY_ROW_NUM - 1
-      );
-      const progressRowRange = progressRowIndex - SCENE_START_BODY_ROW_NUM + 1;
-
-      if (progressRowRange == 0) return;
-
       // 行切り抜き ’_’始まりを除外
       const copyVal = progressAllValues
-        .slice(SCENE_START_BODY_ROW_NUM - 1, progressRowIndex)
+        .slice(SCENE_START_BODY_ROW_NUM - 1, sceneEndBodyRowNum)
         .filter(
           (dataRow) =>
             !String(dataRow[SCENENAME_COLUMN_NUM - 1]).startsWith(
@@ -133,7 +156,7 @@ function updateManHoursAllSheetMain() {
             )
         );
       const copyBg = progressAllBackGrounds
-        .slice(SCENE_START_BODY_ROW_NUM - 1, progressRowIndex)
+        .slice(SCENE_START_BODY_ROW_NUM - 1, sceneEndBodyRowNum)
         .filter(
           (dataRow, index) =>
             !String(
@@ -198,6 +221,12 @@ function updateManHoursAllSheetMain() {
       pasteColor.push(...copyColorTitle);
     });
 
+    if (errorMessages.length > 0) {
+      throw new Error(errorMessages.join("\n"));
+    }
+    if (pasteVal.length == 0) {
+      throw new Error("データがありません");
+    }
     // 貼り付け範囲取得
     const pastDataRange = manhour_all_sheet.getRange(
       MANHOUR_ALL_START_ROW_NUM,
