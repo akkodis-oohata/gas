@@ -72,6 +72,9 @@ function updateManHoursAllSheetMain() {
     const manhour_all_sheet = spreadsheet.getSheetByName(
       MANHOUR_ALL_SHEET_NAME
     );
+    if (!manhour_all_sheet) {
+      throw new Error('「' + MANHOUR_ALL_SHEET_NAME + '」シートが見つかりません');
+    }
 
     // 工数設定
     setManhour(progress_sheets, manhour_all_sheet);
@@ -126,7 +129,7 @@ function updateManHoursAllSheetMain() {
         return;
       }
       // コピー行範囲：B列（シーン名）データのヘッダ行以降のデータ最終行
-      const progressRowIndex = getPsSceneRowsIndex(progress_sheet);
+      const progressRowIndex = getPsSceneRowsIndex(progress_sheet.getDataRange());
       // 進行表シーン名の最後の行
       let sceneEndBodyRowNum = progressRowIndex + 1;
       const progressRowRange =

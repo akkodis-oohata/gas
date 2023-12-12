@@ -4,13 +4,6 @@ function exclusiveMain(callback) {
   lock.tryLock(0);
   if (lock.hasLock()) {
     try {
-      // スプレッドシートの読み込み
-      // let spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-      // シート読み込み
-      // const sheets = spreadsheet.getSheets();
-
-      //protectSheet(sheets); // シート保護
-
       // 処理実行
       callback();
     } catch (error) {

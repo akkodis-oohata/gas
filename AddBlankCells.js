@@ -29,7 +29,9 @@ function addBlankCellsMain() {
 
     // データベースシートの読み込み
     let dataBaseSheet = spreadsheet.getSheetByName(DATA_BASE_SHEET_NAME);
-
+    if (!dataBaseSheet) {
+      throw new Error('「' + DATA_BASE_SHEET_NAME + '」シートが見つかりません');
+    }
     //データスペース（作品話数ベースデータ）へ反映を行う。
     //updateDataSpaceMain(spreadsheet)
 

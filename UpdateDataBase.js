@@ -1,7 +1,7 @@
 function UpdateDataBaseMain(){
   let spreadsheet = SpreadsheetApp.getActiveSpreadsheet()
-  let sheet = spreadsheet.getSheetByName("スケジュール管理仕様");
-  let dataBaseSheet = spreadsheet.getSheetByName("データベース");
+  let sheet = spreadsheet.getSheetByName(SS_SCHEDULE_SHEET_NAME);
+  let dataBaseSheet = spreadsheet.getSheetByName(DATA_BASE_SHEET_NAME);
 
   exclusiveMain(function() {
     updateDataBaseSheet(sheet, dataBaseSheet);
@@ -13,7 +13,6 @@ function UpdateDataBaseMain(){
   //-----------------
   //定数定義
   //-----------------
-  const FREE_SPACE_KEYWORD = "以下フリースぺース";
   const DATABASE_START_COLUMN_INDEX = 6;
   const DATABASE_START_ROW_INDEX = 7;
 
@@ -51,7 +50,7 @@ function UpdateDataBaseMain(){
     let copiedData = [...dataBaseSheetDataValues]; // 配列のコピーを作成
     for (let i = 0; i < copiedData.length; i++) {
 
-      if (copiedData[i][0] === FREE_SPACE_KEYWORD) {
+      if (copiedData[i][0] === FREE_SPACE_TITLE) {
         copiedData.splice(i+1);
         break;
       }
@@ -70,7 +69,7 @@ function UpdateDataBaseMain(){
       for (let j = startColumnIndex; j < scheduleSheetDataValues[rowIdx].length; j++) {
         let scheduleValue = scheduleSheetDataValues[rowIdx][j];
         let currentCellColor = scheduleSheetAllBackGrounds[rowIdx][j];
-        if (!currentCellColor || currentCellColor === "#ffffff" || currentCellColor === COLOR_HOLIDAY) continue;
+        if (!currentCellColor || currentCellColor === COLOR_CLEAR || currentCellColor === COLOR_HOLIDAY) continue;
   
         if (storyColor !== currentCellColor) {
           storyColor = currentCellColor;

@@ -2,18 +2,37 @@
 //定数定義
 //-----------------
 const DATA_BASE_SHEET_NAME = "データベース";
+//セルの色塗り初期化時の色
+const COLOR_CLEAR = "#ffffff";
+// 土日祝日の色
+const COLOR_HOLIDAY = "#808080";
+//スケジュール表シート名
+const SS_SCHEDULE_SHEET_NAME = "スケジュール表";
 // データベースとスケジュール表のフォーマットの差を埋める為、美術ルーム全体スケジュールmemoの行数分+CLW美術作業者一覧分-以下データスペース-作業者ベースデータで算出する
 //const DATA_BASE_FORMAT_OFFSET = 5;
 //カレンダー
 const SS_CALENDERDATE_COLUMN_INDEX = 7;
 const SS_CALENDERDATE_ROW_INDEX = 6;
+//話数名(進行表)
+const PS_STORYNAME_ROW_INDEX = 0;
+const PS_STORYNAME_COLUMN_INDEX = 0;
+//シーン名(進行表)
+const PS_SCENENAME_COLUMN_INDEX = 1;
+const PS_SCENENAME_START_ROW_INDEX = 6;
+// 区切り文字
+const DELIMITER = ",";
 // 固定文字
 const FIXED_CELL_KEYWORD = "▼▲▼";
 const CLW_ARTWORK_PERSONS_TITLE = "CLW美術作業者一覧";
 const FREE_SPACE_TITLE = "以下フリースぺース";
 const MEMO_SPACE_TITLE = "memo";
 //担当者
-// const PERSON_COLUMN_INDEX = 6;
+const PERSON_COLUMN_INDEX = 6;
+//エラーメッセージ
+const ERROR_MESSAGE_DELIMITER = `進行表の作品話数名に区切り文字 ${DELIMITER} が含まれています:`;
+const ERROR_MESSAGE_BLANK = `進行表の作品話数が未入力です:`;
+const ERROR_MESSAGE_COLOR = `進行表の作品話数セルの背景色が不正です:`;
+
 
 //-----------------
 //変数
@@ -34,12 +53,64 @@ let scheduleSheetPersonRange = undefined;
 let dataBaseSheetPersonRange = undefined;
 // データベースシートの担当者領域
 
+// 話数、シーン名チェック
+function checkSceneName(progressSheet, isViewSheetName) {
+  const allDataRange = progressSheet.getDataRange();
+  // 値を取得
+  const progressValues = allDataRange.getValues();
+  // 背景色を取得する
+  const progressBackGrounds = allDataRange.getBackgrounds();
+  // シート名
+  const sheetName = isViewSheetName ? `${progressSheet.getSheetName()} ` : "";
+  // エラー用変数
+  let errorMessages = [];
+  // 話数 区切り文字
+  if (
+    String(
+      progressValues[PS_STORYNAME_ROW_INDEX][PS_STORYNAME_COLUMN_INDEX]
+    ).indexOf(DELIMITER) > -1
+  ) {
+    errorMessages.push(`${ERROR_MESSAGE_DELIMITER + sheetName}`);
+  }
+  // 話数 空白
+  if (
+    String(progressValues[PS_STORYNAME_ROW_INDEX][PS_STORYNAME_COLUMN_INDEX]) ==
+    ""
+  ) {
+    errorMessages.push(`${ERROR_MESSAGE_BLANK + sheetName} `);
+  }
+  // 話数 背景色
+  if (
+    progressBackGrounds[PS_STORYNAME_ROW_INDEX][PS_STORYNAME_COLUMN_INDEX] ==
+      COLOR_CLEAR ||
+    progressBackGrounds[PS_STORYNAME_ROW_INDEX][PS_STORYNAME_COLUMN_INDEX] ==
+      COLOR_HOLIDAY
+  ) {
+    errorMessages.push(`${ERROR_MESSAGE_COLOR + sheetName} `);
+  }
+
+  //シーン名 空データにあたるまで
+  let i = PS_SCENENAME_START_ROW_INDEX;
+  while (progressValues[i][PS_SCENENAME_COLUMN_INDEX] != "") {
+    if (
+      String(progressValues[i][PS_SCENENAME_COLUMN_INDEX]).indexOf(DELIMITER) >
+      -1
+    ) {
+      errorMessages.push(
+        `${ERROR_MESSAGE_DELIMITER + sheetName} ${i + 1}行目:${
+          progressValues[i][PS_SCENENAME_COLUMN_INDEX]
+        }`
+      );
+    }
+    i++;
+  }
+  return errorMessages;
+}
+
 //カレンダーの一番右の列数を取得する。
-function getLastFilledColumnInCalender(sheet, calenderDateIndex) {
+function getLastFilledColumnInCalender(sheet,calenderDateIndex) {
   const row = calenderDateIndex; // 確認したい行番号
-  const rowData = sheet
-    .getRange(row, 1, 1, sheet.getLastColumn())
-    .getValues()[0];
+  const rowData = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];
   let lastFilledColumn = rowData.length;
 
   // 逆順でループして最初の非空のセルを探す
@@ -49,9 +120,10 @@ function getLastFilledColumnInCalender(sheet, calenderDateIndex) {
       break;
     }
   }
-  console.log("calenderFilledNum:" + lastFilledColumn);
+  console.log("calenderFilledNum:" + lastFilledColumn)
   return lastFilledColumn;
 }
+
 
 //セル削除（削除後詰めなし）
 function deleteCellsC(range, isAllData = true) {
@@ -60,6 +132,7 @@ function deleteCellsC(range, isAllData = true) {
   //選択範囲の数だけループ
 
   for (let i = 0; i < selectedColumns; i++) {
+
     let index = range.getColumn() - 1 + i;
     let deleteCellColor = scheduleSheetAllBackGrounds[rowIndex][index];
     //土日祝日だけ割り込み禁止
@@ -67,14 +140,16 @@ function deleteCellsC(range, isAllData = true) {
       continue;
     }
     //値、色クリア
-    setSellC(rowIndex, index, COLOR_CLEAR, "", COLOR_CLEAR, "");
+    setSellC(rowIndex, index, COLOR_CLEAR, "", COLOR_CLEAR,"");
+  
   }
+
 }
 
-//セルを隣に移動
+//セルを隣に移動 
 function moveCellC(rowIndex, index, existColor, sceneTitle, manHourColor) {
   let nextExistColor = scheduleSheetAllBackGrounds[rowIndex][index];
-  let isFixed = isCellFixed(scheduleSheetDataValues, rowIndex, index);
+  let isFixed = isCellFixed(scheduleSheetDataValues,rowIndex,index);
   //土日祝日・固定セルだけ割り込み禁止//
   if (nextExistColor == COLOR_HOLIDAY || isFixed) {
     index++;
@@ -129,21 +204,14 @@ function warikomiMoveCellC(
       tmpRowBackGrounds[i + countMove] == COLOR_HOLIDAY ||
       tmpRowStatusDataBaseSheetDataValues[i + countMove] === FIXED_CELL_KEYWORD
     ) {
-      //while (tmpRowBackGrounds[i + countMove] == COLOR_HOLIDAY) {
       countMove++;
 
-      if (i + countMove >= tmpRowBackGrounds.length) {
-        //スケジュール表のrangeを超えたときにエラーを吐き出す。
+      if(i + countMove >= tmpRowBackGrounds.length){  //スケジュール表のrangeを超えたときにエラーを吐き出す。
         // sceneTitleをカンマで分割
         let sceneTitles = sceneTitle.split(DELIMITER);
         // 2番目の要素を取得（配列は0から始まるので、1番目のインデックス）
-        let secondSceneTitle =
-          sceneTitles.length > 1 ? sceneTitles[1] : sceneTitle;
-        throw new Error(
-          "「" +
-            secondSceneTitle +
-            "」の塗りつぶし範囲がスケジュール表の範囲を超えたため、処理を中断いたしました。"
-        );
+        let secondSceneTitle = sceneTitles.length > 1 ? sceneTitles[1] : sceneTitle;
+        throw new Error('「' + secondSceneTitle + '」の塗りつぶし範囲がスケジュール表の範囲を超えたため、処理を中断いたしました。');
       }
 
       continue;
@@ -161,37 +229,9 @@ function warikomiMoveCellC(
   // 移動幅にscene幅足しこみ
   countMove = countMove + countSceneMove;
 
-  // // 移動幅範囲内の休日数
-  // const rangeHoliday = tmpRowBackGrounds
-  //   .slice(startColumnIndex, manHourColors.length)
-  //   .filter((backGround) => backGround == COLOR_HOLIDAY).length;
-  // // 見切れる範囲の休日数
-  // const outHoliday = tmpRowBackGrounds
-  //   .slice(tmpRowBackGrounds.length - countMove)
-  //   .filter((backGround) => backGround == COLOR_HOLIDAY).length;
-  // // 見切れる範囲の固定セル数
-  // const outFixedDay = tmpRowStatusDataBaseSheetDataValues
-  //   .slice(tmpRowStatusDataBaseSheetDataValues.length - countMove)
-  //   .filter((value) => value == FIXED_CELL_KEYWORD).length;
-
-  // // 空白セルの挿入時に見切れる範囲に初期値・休日以外がある場合エラー
-  // const outRange =
-  //   tmpRowBackGrounds.length -
-  //   1 -
-  //   (countMove - rangeHoliday + outHoliday + outFixedDay);
-  // const outRangeInput = tmpRowBackGrounds
-  //   .slice(outRange)
-  //   .filter(
-  //     (backGround) => backGround != COLOR_HOLIDAY && backGround != COLOR_CLEAR
-  //   ).length;
-  // if (outRangeInput > 0) {
-  //   let ui = SpreadsheetApp.getUi();
-  //   ui.alert("見切れる範囲に入力があります");
-  //   return;
-  // }
   //選択開始列　から　一番最終列までループ（１行だけ指定と想定）
   for (let i = startColumnIndex; i < tmpRowBackGrounds.length; i++) {
-    //該当セルが土日:ずらす値を-１、iをインクリメント //TODO:
+    //該当セルが土日:ずらす値を-１、iをインクリメント
     if (
       tmpRowBackGrounds[i] == COLOR_HOLIDAY ||
       tmpRowStatusDataBaseSheetDataValues[i] === FIXED_CELL_KEYWORD ||
@@ -211,7 +251,7 @@ function warikomiMoveCellC(
       countMove++;
     }
     if (i + countMove >= tmpRowBackGrounds.length) {
-      throw new Error("見切れる範囲に入力があります");
+      throw new Error("カレンダー範囲外に入力があります");
     }
     setSellC(
       rowIndex,
@@ -234,7 +274,7 @@ function setSellC(
   cellStatus
 ) {
   scheduleSheetDataValues[rowIndex][columnIndex] = "";
-  scheduleSheetDataValues[rowIndex + 1][columnIndex] = cellStatus; //固定セルの表記を消す
+  scheduleSheetDataValues[rowIndex + 1][columnIndex] = cellStatus;  //固定セルの表記を消す
   scheduleSheetAllBackGrounds[rowIndex][columnIndex] = setColor;
   scheduleSheetAllBackGrounds[rowIndex + 1][columnIndex] = manHourColor;
   dataBaseSheetDataValues[rowIndex][columnIndex] = sceneTitle;
@@ -242,10 +282,10 @@ function setSellC(
 }
 
 //先頭セルにシーン名を表示する
-function displaySceneNameC(rowIndex, maxDays) {
-  console.log("---displaySceneNameC---");
+function displaySceneNameC(rowIndex,maxDays) {
+  console.log("---displaySceneNameC---")
   let prevSceneTitle = "";
-  let sceneAndDay = {}; // シーン名と日数の対応を保持するオブジェクト
+  let sceneAndDay = {};  // シーン名と日数の対応を保持するオブジェクト
   for (
     let columnIndex = SS_CALENDERDATE_COLUMN_INDEX;
     columnIndex < maxDays; //SS_CALENDERDATE_COLUMN_INDEX + maxDays;
@@ -258,13 +298,12 @@ function displaySceneNameC(rowIndex, maxDays) {
       sceneTitle = truncateTitle(sceneTitle, 3);
       // 日分を除いたシーン名を取得
       sceneTitleOnly = truncateTitle(sceneTitle, 2);
-    } else {
-      prevSceneTitle = sceneTitleOnly; // 前回のシーン名を更新
+    }else{
+      prevSceneTitle = sceneTitleOnly;  // 前回のシーン名を更新
     }
-    if (sceneTitleOnly !== prevSceneTitle) {
-      // 空欄後の最初のシーン
+    if (sceneTitleOnly !== prevSceneTitle) {  // 空欄後の最初のシーン
       if (!sceneAndDay.hasOwnProperty(sceneTitleOnly)) {
-        sceneAndDay[sceneTitleOnly] = 0; // シーン名と日数の初期値をセットし、シーン名の追加
+        sceneAndDay[sceneTitleOnly] = 0;  // シーン名と日数の初期値をセットし、シーン名の追加
       }
       // シーンがカバーする日数をカウント
       // let columnCount = countSceneDays(
@@ -286,18 +325,14 @@ function displaySceneNameC(rowIndex, maxDays) {
       //   columnCount,
       //   scheduleSheetDataValues
       // );
-
+      
       // 作品名、シーン名のみスケジュール表に反映
-      annotateSceneTitle(
-        rowIndex,
-        columnIndex,
-        sceneTitleOnly,
-        scheduleSheetDataValues
-      );
+      annotateSceneTitle(rowIndex, columnIndex, sceneTitleOnly, scheduleSheetDataValues)
     }
-    prevSceneTitle = sceneTitleOnly; // 前回のシーン名を更新
+    prevSceneTitle = sceneTitleOnly;  // 前回のシーン名を更新
   }
-  console.log("---displaySceneNameC end---");
+  console.log("---displaySceneNameC end---")
+
 }
 
 // delimiterIndexのDELIMITER以降を削除する
@@ -306,7 +341,7 @@ function truncateTitle(sceneTitle, delimiterIndex) {
   let parts = sceneTitle.split(DELIMITER);
   // "undefined" 文字列が含まれている場合のみ map を実行
   if (parts.includes("undefined")) {
-    parts = parts.map((part) => (part === "undefined" ? "" : part));
+    parts = parts.map(part => part === "undefined" ? "" : part);
   }
   // 指定されたデリミタのインデックスまでの部分を抽出
   parts = parts.slice(0, delimiterIndex);
@@ -315,6 +350,9 @@ function truncateTitle(sceneTitle, delimiterIndex) {
   // 新しい title を返す
   return newTitle;
 }
+
+
+
 
 //日分の前の値を取得する。
 function extractDayNumberFromString(str) {
@@ -336,13 +374,12 @@ function countSceneDays(rowIndex, startColumnIndex, sheetData) {
   let targetSheetData = sheetData[rowIndex][startColumnIndex]; //最初にカウントするシーンを取得する。
 
   for (let i = startColumnIndex; i < sheetData[rowIndex].length; i++) {
-    if (sheetData[rowIndex][i] === "") {
+    if (sheetData[rowIndex][i] === "" ) {  
       // 空白セルが見つかったら終了
       break;
     }
-    if (targetSheetData !== sheetData[rowIndex][i]) {
-      //空白以外も違うシーンがあったら終了する。
-      targetSheetData = sheetData[rowIndex][i];
+    if ( targetSheetData !== sheetData[rowIndex][i]){  //空白以外も違うシーンがあったら終了する。
+      targetSheetData = sheetData[rowIndex][i]
       break;
     }
     count++;
@@ -360,18 +397,20 @@ function annotateSceneWithDays(
   if (sceneTitle !== "" && daysCount > 0) {
     // シーン名に日数を付け加える
     let annotation = sceneTitle + DELIMITER + daysCount + "日分";
-    scheduleData[rowIndex][columnIndex] = annotation; // 注釈をシートに設定
+    scheduleData[rowIndex][columnIndex] = annotation;  // 注釈をシートに設定
   }
 }
 
 //日分を表示しない場合の関数
 function annotateSceneTitle(rowIndex, columnIndex, sceneTitle, scheduleData) {
+
   if (sceneTitle !== "") {
     // シーン名に日数を付け加える
     let annotation = sceneTitle;
-    scheduleData[rowIndex][columnIndex] = annotation; // 注釈をシートに設定
+    scheduleData[rowIndex][columnIndex] = annotation;  // 注釈をシートに設定
   }
 }
+
 
 // 選択範囲のチェックと取得
 // ロジックが複雑になるので選択範囲は
@@ -535,7 +574,7 @@ function fillClearCellC(
   sceneTitle,
   manHourColors
 ) {
-  //console.log('---- fillClearCellC IN ----')
+    //console.log('---- fillClearCellC IN ----')
 
   // 何セル移動できるかの判断用に、該当行の配列情報をコピーしておく
   let tmpRowBackGrounds = scheduleSheetAllBackGrounds[rowIndex].slice();
@@ -546,19 +585,13 @@ function fillClearCellC(
     //移動先セルが空白のセル以外:ずらす値を+１、iをインクリメントせず空白のセルになるまでmovecをずらす
     while (tmpRowBackGrounds[i + countMove] != COLOR_CLEAR) {
       countMove++;
-
-      if (i + countMove >= tmpRowBackGrounds.length) {
-        //スケジュール表のrangeを超えたときにエラーを吐き出す。
+      
+      if(i + countMove >= tmpRowBackGrounds.length){  //スケジュール表のrangeを超えたときにエラーを吐き出す。
         // sceneTitleをカンマで分割
         let sceneTitles = sceneTitle.split(DELIMITER);
         // 2番目の要素を取得（配列は0から始まるので、1番目のインデックス）
-        let secondSceneTitle =
-          sceneTitles.length > 1 ? sceneTitles[1] : sceneTitle;
-        throw new Error(
-          "「" +
-            secondSceneTitle +
-            "」の塗りつぶし範囲がスケジュール表の範囲を超えたため、処理を中断いたしました。"
-        );
+        let secondSceneTitle = sceneTitles.length > 1 ? sceneTitles[1] : sceneTitle;
+        throw new Error('「' + secondSceneTitle + '」の塗りつぶし範囲がスケジュール表の範囲を超えたため、処理を中断いたしました。');
       }
       continue;
     }
@@ -572,10 +605,11 @@ function fillClearCellC(
     );
   }
   //console.log('---- fillClearCellC END ----')
+
 }
 //空白セルの挿入
 //isAllData = false （スプレッドシート上でデータが入力されている担当情報範囲）
-//しか利用されていないので、この引数いらない TODO
+//しか利用されていないので、この引数いらない 
 function addBlankCellsC(addBlankRange, isAllData = true) {
   //選択範囲の幅(土日はカウントから外す)
   let startColumnIndex = addBlankRange.getColumn() - 1;
@@ -586,41 +620,12 @@ function addBlankCellsC(addBlankRange, isAllData = true) {
   let tmpRowBackGrounds = scheduleSheetAllBackGrounds[rowIndex].slice();
   let tmpRowStatusBackGrounds =
     scheduleSheetAllBackGrounds[rowIndex + 1].slice();
-  let tmpRowDataBaseSheetDataValues = dataBaseSheetDataValues[rowIndex].slice();
-  let tmpRowStatusDataBaseSheetDataValues =
-    dataBaseSheetDataValues[rowIndex + 1].slice();
-
+  let tmpRowDataBaseSheetDataValues =
+    dataBaseSheetDataValues[rowIndex].slice();
+  let tmpRowStatusDataBaseSheetDataValues = dataBaseSheetDataValues[rowIndex + 1].slice();
+  
   // 選択範囲幅
   const addBlanklength = endColumnIndx - (startColumnIndex - 1);
-  // // 選択範囲内の休日数
-  // const rangeHoliday = tmpRowBackGrounds
-  //   .slice(startColumnIndex, endColumnIndx + 1)
-  //   .filter((backGround) => backGround == COLOR_HOLIDAY).length;
-  // // 見切れる範囲の休日数
-  // const outHoliday = tmpRowBackGrounds
-  //   .slice(tmpRowBackGrounds.length - addBlanklength)
-  //   .filter((backGround) => backGround == COLOR_HOLIDAY).length;
-  // // 見切れる範囲の固定セル数 //TODO:固定セルの数も足し合わせる
-  // const outFixedDay = tmpRowStatusDataBaseSheetDataValues
-  //   .slice(tmpRowStatusDataBaseSheetDataValues.length - addBlanklength)
-  //   .filter((value) => value == FIXED_CELL_KEYWORD).length;
-
-  // // 空白セルの挿入時に見切れる範囲に初期値・休日以外がある場合エラー
-  // const outRange =
-  //   tmpRowBackGrounds.length -
-  //   1 -
-  //   (addBlanklength - rangeHoliday + outHoliday + outFixedDay); //TODO:大畑さんに確認
-  // //tmpRowBackGrounds.length - 1 - addBlanklength - rangeHoliday + outHoliday - outFixedDay;
-  // const outRangeInput = tmpRowBackGrounds
-  //   .slice(outRange)
-  //   .filter(
-  //     (backGround) => backGround != COLOR_HOLIDAY && backGround != COLOR_CLEAR
-  //   ).length;
-  // if (outRangeInput > 0) {
-  //   let ui = SpreadsheetApp.getUi();
-  //   ui.alert("見切れる範囲に入力があります");
-  //   return;
-  // }
 
   //選択開始列から一番最終列までループ（１行だけ指定と想定）
   let countMove = addBlanklength;
@@ -632,14 +637,9 @@ function addBlankCellsC(addBlankRange, isAllData = true) {
       // 該当セルが土日
       tmpRowBackGrounds[i] == COLOR_HOLIDAY ||
       // 該当セルが固定セル（選択範囲外）
-      //((tmpRowStatusDataBaseSheetDataValues[i] === FIXED_CELL_KEYWORD) &&
-      //(i < startColumnIndex || i > endColumnIndx)) ||
-      (tmpRowStatusDataBaseSheetDataValues[i] === FIXED_CELL_KEYWORD &&
-        i > endColumnIndx) ||
+      (tmpRowStatusDataBaseSheetDataValues[i] === FIXED_CELL_KEYWORD && i > endColumnIndx) ||
       // 該当セルが空白セル（選択範囲外で、すでにセル移動が行われている）
-      (tmpRowBackGrounds[i] == COLOR_CLEAR &&
-        i > endColumnIndx &&
-        ColoredCellMoved)
+      (tmpRowBackGrounds[i] == COLOR_CLEAR && i > endColumnIndx && ColoredCellMoved) 
     ) {
       countMove--;
       // ずらす値が0以下になる＝後ろのセルはずらす必要がないのでループを抜ける
@@ -657,15 +657,12 @@ function addBlankCellsC(addBlankRange, isAllData = true) {
       countMove++;
     }
 
-    if (i + countMove >= tmpRowBackGrounds.length) {
-      //スケジュール表のrangeを超えたときにエラーを吐き出す。
-      throw new Error(
-        "塗りつぶし範囲がスケジュール表の範囲を超えたため、処理を中断いたしました。"
-      );
+    if(i + countMove >= tmpRowBackGrounds.length){  //スケジュール表のrangeを超えたときにエラーを吐き出す。
+      throw new Error('塗りつぶし範囲がスケジュール表の範囲を超えたため、処理を中断いたしました。');
     }
     //ここの直前で、移動しないといけないColorがClear以外だったら、実際の移動が発生した。
     //を、Flag情報で持たせる。
-    if (tmpRowBackGrounds[i] != COLOR_CLEAR) {
+    if(tmpRowBackGrounds[i] != COLOR_CLEAR){
       ColoredCellMoved = true;
     }
 
@@ -675,7 +672,7 @@ function addBlankCellsC(addBlankRange, isAllData = true) {
       tmpRowBackGrounds[i],
       tmpRowDataBaseSheetDataValues[i],
       tmpRowStatusBackGrounds[i],
-      "" //移動するということは、固定セルではない
+      ""//移動するということは、固定セルではない
     );
   }
   // 選択範囲をClear  //固定セルが選択されている場合は固定が消える。
@@ -695,9 +692,6 @@ function deleteCellsWithMove(deleteRange, isAllData = true) {
   let startColumnIndex = deleteRange.getColumn() - 1;
   let endColumnIndx = deleteRange.getLastColumn() - 1;
   let rowIndex = isAllData ? deleteRange.getRow() - 1 : 0;
-  console.log("startColumnIndex=" + startColumnIndex);
-  console.log("endColumnIndx=" + endColumnIndx);
-  console.log("rowIndex=" + rowIndex);
 
   // 移動のコピー元用に、該当行の配列情報をコピーしておく
   let tmpRowBackGrounds = scheduleSheetAllBackGrounds[rowIndex].slice();
@@ -710,22 +704,17 @@ function deleteCellsWithMove(deleteRange, isAllData = true) {
   for (let i = endColumnIndx + 1; i < tmpRowBackGrounds.length; i++) {
     //該当セル(選択セルの左から最後の列まで)が土日:ずらす値を＋１、iをインクリメント //固定セルも該当セルにしない
     if (
-      tmpRowBackGrounds[i] == COLOR_HOLIDAY ||
-      (tmpRowStatusDataBaseSheetDataValues[i] == FIXED_CELL_KEYWORD &&
-        (i < startColumnIndex || i > endColumnIndx))
-    ) {
-      //TODO:大畑さんと差異あり。
+      (tmpRowBackGrounds[i] == COLOR_HOLIDAY ) ||
+      ((tmpRowStatusDataBaseSheetDataValues[i] == FIXED_CELL_KEYWORD)
+      && (i < startColumnIndex || i > endColumnIndx))) {  
       countMove++;
       continue;
     }
     //移動先セルが土日:ずらす値を-１、iをインクリメントせず土日でなくなるまでmovecをずらす//移動先に固定セルがあった場合は休日扱いとする。ただし、選択セル内の固定セルはなくなるので、選択セル範囲外を対象とする。
     while (
-      tmpRowBackGrounds[i - countMove] == COLOR_HOLIDAY ||
-      (tmpRowStatusDataBaseSheetDataValues[i - countMove] ===
-        FIXED_CELL_KEYWORD &&
-        (i - countMove < startColumnIndex || i - countMove > endColumnIndx))
-    ) {
-      //TODO:大畑さんと差異あり
+      (tmpRowBackGrounds[i - countMove] == COLOR_HOLIDAY)||
+      ((tmpRowStatusDataBaseSheetDataValues[i - countMove] === FIXED_CELL_KEYWORD)
+      && (i- countMove < startColumnIndex || i- countMove > endColumnIndx)) ) {  
       countMove--;
     }
 
@@ -757,17 +746,15 @@ function deleteCellsWithMove(deleteRange, isAllData = true) {
 }
 
 function updateScheduleSheetWithDataValuesC() {
-  console.log("--updateScheduleSheetWithDataValuesC--");
-  const label = "updateScheduleSheetWithDataValuesC";
-  console.time(label);
+  console.log("--updateScheduleSheetWithDataValuesC--")
+  const label = 'updateScheduleSheetWithDataValuesC'
+  console.time(label)
   // 全行の列数を確認する
   scheduleSheetDataValues.forEach((row, index) => {
     //console.log(`行${index + 1}の列数:`, row.length);
     if (row.length !== scheduleSheetAllRange.getNumColumns()) {
       throw new Error(
-        `行${index + 1}の列数(${
-          row.length
-        })がscheduleSheetAllRangeの列数(${scheduleSheetAllRange.getNumColumns()})と一致しません。`
+        `行${index + 1}の列数(${row.length})がscheduleSheetAllRangeの列数(${scheduleSheetAllRange.getNumColumns()})と一致しません。`
       );
     }
   });
@@ -776,13 +763,13 @@ function updateScheduleSheetWithDataValuesC() {
   scheduleSheetAllRange.setValues(scheduleSheetDataValues);
   scheduleSheetAllRange.setBackgrounds(scheduleSheetAllBackGrounds);
   dataBaseSheetAllRange.setValues(dataBaseSheetDataValues);
-  console.timeEnd(label);
+  console.timeEnd(label)
 }
 
 function updateScheduleSheetPresonWithDataValuesC() {
-  console.log("--updateScheduleSheetPresonWithDataValuesC--");
-  const label = "updateScheduleSheetPresonWithDataValuesC";
-  console.time(label);
+  console.log("--updateScheduleSheetPresonWithDataValuesC--")
+  const label = 'updateScheduleSheetPresonWithDataValuesC'
+  console.time(label)
   // 全行の列数を確認する
   scheduleSheetDataValues.forEach((row, index) => {
     console.log(`行${index + 1}の列数:`, row.length);
@@ -797,7 +784,8 @@ function updateScheduleSheetPresonWithDataValuesC() {
   scheduleSheetPersonRange.setValues(scheduleSheetDataValues);
   scheduleSheetPersonRange.setBackgrounds(scheduleSheetAllBackGrounds);
   dataBaseSheetPersonRange.setValues(dataBaseSheetDataValues);
-  console.timeEnd(label);
+  console.timeEnd(label)
+
 }
 // スケジュール表の選択セルが固定セルかどうかを確認する。
 function isCellFixedC(values, rowIndex, columnIndex) {
@@ -819,21 +807,21 @@ function isRangeFixedC(values, range) {
 
   for (let i = 0; i < numRows; i++) {
     for (let j = 0; j < numColumns; j++) {
-      let rowIndex = startRow + i - 1; // values 配列のインデックスに合わせる
+      let rowIndex = startRow + i - 1;  // values 配列のインデックスに合わせる
       let columnIndex = startColumn + j - 1; // values 配列のインデックスに合わせる
       if (isCellFixedC(values, rowIndex, columnIndex)) {
-        return true; // 一つでも固定されているセルがあれば true を返す
+        return true;  // 一つでも固定されているセルがあれば true を返す
       }
     }
   }
-  return false; // 固定されているセルがない場合
+  return false;  // 固定されているセルがない場合
 }
 
 // Range[]内のセルが１つでも固定セルか確認する関数
-function isRangesFixedC(values, ranges) {
-  for (range of ranges) {
-    if (isRangeFixedC(values, range)) {
-      return true; // 一つでも固定されているセルがあれば true を返す
+function isRangesFixedC(values, ranges){
+  for(range of ranges){
+    if(isRangeFixedC(values, range)){
+      return true;  // 一つでも固定されているセルがあれば true を返す
     }
   }
   return false; // 固定されているセルがない場合
@@ -842,31 +830,25 @@ function isRangesFixedC(values, ranges) {
 // ユーザーに確認のダイアログを表示し、続行するかどうかを尋ねる関数
 function confirmFixedCellExecutionC() {
   let ui = SpreadsheetApp.getUi(); // スプレッドシートのUIを取得
-  let response = ui.alert(
-    "選択された内容に「固定セル」がありました。このまま実行しますか？",
-    '実行する場合は"OK"を実行しない場合は、"キャンセル"を選んでください',
-    ui.ButtonSet.OK_CANCEL
-  );
+  let response = ui.alert('選択された内容に「固定セル」がありました。このまま実行しますか？', 
+  '実行する場合は"OK"を実行しない場合は、"キャンセル"を選んでください', ui.ButtonSet.OK_CANCEL);
 
   // ユーザーの選択に応じたアクションを実行
   if (response == ui.Button.OK) {
-    console.log(true);
+    console.log(true)
     return true;
-  }
-  console.log(false);
+  } 
+  console.log(false)
   return false;
 }
 
+
 //実行日と時間を前回算出実行日を記入する
-function displayCurrentDateTimeC(sheet, row, column) {
+function displayCurrentDateTimeC(sheet,row,column) {
   // 現在の日付と時間を取得
   var now = new Date();
   // 指定されたフォーマットに変換
-  var formattedDate = Utilities.formatDate(
-    now,
-    SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(),
-    "yyyy/MM/dd HH:mm"
-  );
+  var formattedDate = Utilities.formatDate(now, SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(), "yyyy/MM/dd HH:mm");
   // 日付と時間を設定
-  sheet.getRange(row, column).setValue(formattedDate);
+  sheet.getRange(row,column).setValue(formattedDate);
 }

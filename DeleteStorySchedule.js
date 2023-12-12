@@ -8,8 +8,6 @@ function DeleteStoryScheduleMain(){
   //削除後詰めのチェックボックスの場所
   const TSUME_DEL_ON_ROW = 2;
   const TSUME_DEL_ON_COLUMN = 17;
-  const DATA_BASE_SHEET_NAME = "データベース"
-  const SCHEDULE_SHEET_NAME = "スケジュール管理仕様"
 
   const STORY_TITLE_ROW = 1;
   const STORY_TITLE_COLUMN = 1;
@@ -22,7 +20,14 @@ function DeleteStoryScheduleMain(){
     const mainSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     const sourceSheet = mainSpreadsheet.getActiveSheet(); //進行表
     const databaseSheet = mainSpreadsheet.getSheetByName(DATA_BASE_SHEET_NAME);
-    const schedulesheet = mainSpreadsheet.getSheetByName(SCHEDULE_SHEET_NAME);
+    if (!databaseSheet) {
+      throw new Error('「' + DATA_BASE_SHEET_NAME + '」シートが見つかりません');
+    }
+    const schedulesheet = mainSpreadsheet.getSheetByName(SS_SCHEDULE_SHEET_NAME);
+    if (!schedulesheet) {
+      throw new Error('「' + SS_SCHEDULE_SHEET_NAME + '」シートが見つかりません');
+    }
+
     
     //グローバル変数のスケジュール表とデータベースシートを作成
     getScheduleSheetInfoC(schedulesheet,databaseSheet)

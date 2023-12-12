@@ -11,7 +11,6 @@ function removeFixedCellMarkerMain(){
   //定数定義
   //-----------------
 
-  const SCHEDULE_SHEET_NAME = "スケジュール管理仕様";
   const UNSUPPORTED_SHEET_ERROR_MESSAGE = "選択されたシートは処理対象外です。";
   const FIXED_CELL_FONT_SIZE = 4;
 
@@ -20,6 +19,9 @@ function removeFixedCellMarkerMain(){
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     const activeSheet = spreadsheet.getActiveSheet();
     const dataSheet = spreadsheet.getSheetByName(DATA_BASE_SHEET_NAME);
+    if (!dataSheet) {
+      throw new Error('「' + DATA_BASE_SHEET_NAME + '」シートが見つかりません');
+    }
 
     if (!isValidSheet(activeSheet)) {
       Browser.msgBox('エラー',UNSUPPORTED_SHEET_ERROR_MESSAGE, Browser.Buttons.OK);
@@ -98,7 +100,7 @@ function removeFixedCellMarker() {
     sheet.getRange(rowBelowSelected, startingCol, numRows, numCols).setValues(values);
   }
   function isValidSheet(sheet) {
-    return sheet.getName() === SCHEDULE_SHEET_NAME;
+    return sheet.getName() === SS_SCHEDULE_SHEET_NAME;
   }
 
   function getSelectedCellRange(sheet) {

@@ -7,8 +7,6 @@ function updateProgressSheetMain(){
   //定数定義
   //-----------------
   //進行表シート名
-  const PROGRESS_SHEET_NAME = '進行表テストデータ'
-
   const COLOR_CLEAR = '#ffffff'  //セルの色塗り初期化時の色
   const COLOR_TOTAL_BACKGROUND ='#d9d2e9'  //合計のセルの色
   const COLOR_MIIRIMIMAKI_TOTAL_BACKGROUND = '#9fc5e8'  //未入・未撒き合計（未作業）の背景色
@@ -238,11 +236,16 @@ function updateProgressSheetMain(){
 
     let spreadsheet = SpreadsheetApp.getActiveSpreadsheet()
     // 進行表読み込み  //動的に読み込む必要あり。
-    //let sheet = spreadsheet.getSheetByName(PROGRESS_SHEET_NAME)
     let sheet = spreadsheet.getActiveSheet();
 
     // シートの全データ、背景色取得
     getAllDataAndBackground(sheet)
+
+    // 前回算出増減に色がついているときにシーン算出を行う場合は、ダイアログを出力する。ダイアログの結果キャンセルが押されたら処理を中断する。
+    let shouldContinueExecution = checkLastChangeValue(rowsUntilTransparent, allBackgrounds);
+    if (!shouldContinueExecution) {
+      return;
+    }
 
     //シートの一定部分を初期化する。
     clearSheetSections(sheet)
@@ -266,13 +269,12 @@ function updateProgressSheetMain(){
     }
 
 
-    // シーンクラスの値設定 //TODO:beforesceneとsceneを比べて、差分を算出し、前回算出増減列に記載する
+    // シーンクラスの値設定
     updateSceneClasses(sheet)
 
     // 描画行く前に値のチェック
     let validateResult = validate()
     if(!validateResult){
-      console.log("Value is invalid.")
       //return
     }
 
@@ -291,6 +293,35 @@ function updateProgressSheetMain(){
 
   //スコープに公開
   this.updateProgressSheet = updateProgressSheet;
+
+  // 前回算出増減の背景色に色がついているときに、ユーザーに確認のダイアログを表示し、続行するかどうかを尋ねる関数
+  function checkLastChangeValue(rowsUntilTransparent, allBackgrounds) {
+    const startRow = SCENE_START_BODY_ROW_INDEX; // 開始行番号
+    const column = SCENE_LAST_CHANGE_VALUE_COLUMN_INDEX; // 対象の列（前回算出増減列）
+    let isColorDetectedInColumn = false;
+
+    // 対象の列で背景色が変更されているか確認する
+    for (let i = startRow - 1; i < startRow - 1 + rowsUntilTransparent; i++) {
+      if (allBackgrounds[i][column] !== '#ffffff') {
+        isColorDetectedInColumn = true;
+        break; // 色が見つかったらループを抜ける
+      }
+    }
+
+    // 色が検出された場合、ユーザーに確認を求める
+    if (isColorDetectedInColumn) {
+      return askUserToContinueExecution();
+    }
+    return true; // 色が検出されなければtrueを返す
+    
+    function askUserToContinueExecution() {
+      let ui = SpreadsheetApp.getUi();
+      let response = ui.alert('前回算出増減列に色がついていますが、このまま実行しますか？',
+        '実行する場合は"OK"を、実行しない場合は"キャンセル"を選んでください', ui.ButtonSet.OK_CANCEL);
+
+      return response === ui.Button.OK;
+    }
+  }
 
   
 
@@ -496,7 +527,7 @@ function updateProgressSheetMain(){
   //シーン管理の背景と入力文字を消去する。
   function clearContentsAndBackgrounds(sheet, startRowIndex, startColumnIndex, endColumnIndex) {
     //シーン管理Cut数列～撒済列まで
-    let endRowIndex = startRowIndex + rowsUntilTransparent - 1;
+    let endRowIndex = startRowIndex + rowsUntilTransparent;
     // 範囲を取得
     let range = sheet.getRange(startRowIndex, startColumnIndex, endRowIndex - startRowIndex + 1, endColumnIndex - startColumnIndex + 1);
     // 範囲内のセルの内容と背景色を消す
@@ -507,7 +538,7 @@ function updateProgressSheetMain(){
   //セルの塗りつぶしが可能か判断する
   function validate() {
     let validateResult = true;
-    let exceededScenes = []; // 50日以上のシーンを保持する配列
+    let exceededScenes = []; // 150日以上のシーンを保持する配列
 
     sceneArray.forEach(scene => {
       //未入り、未撒き、撒済を整数に繰り上げてグラフ化する。
@@ -785,10 +816,6 @@ function updateProgressSheetMain(){
       //シーン
       let rowArray = dataValues[positionIndex]
       let name = rowArray[SCENE_COLUMN_INDEX]
-      //シーン名は記載されている想定
-      //if(!name){
-        //break
-      //}
       let backgroundArray = allBackgrounds[positionIndex]
       let background = backgroundArray[SCENE_COLUMN_INDEX]
       //背景が無色となるまで、枠を作成する。
@@ -936,7 +963,6 @@ function updateProgressSheetMain(){
   //シーン情報格納用のクラスを更新
   function updateSceneClasses(sheet) {
 
-    //let cutNoColumn = CUT_NO_START_COLUMN_NUM
     let cutNoColumnIndex = CUT_NO_START_COLUMN_INDEX
     dualUseArray = [];
     
@@ -973,7 +999,7 @@ function updateProgressSheetMain(){
         scene.averageCutsPerDay = roundToTenth(scene.cutNumber / scene.totalManDay);
       }
     });
-
+    //前回算出増減の色を設定する
     function lastChangeValueColorSelect(scene, beforeScene) {
       // scene.lastChangeValueが0より大きかったら、赤色
       if (scene.lastChangeValue > 0) {
@@ -1090,6 +1116,7 @@ function updateProgressSheetMain(){
     });
   }
 
+  // 指定されたオブジェクトのプロパティに数値またはデフォルト値を設定する
   function setNumericValueOrDefault(target, propName, value, defaultValue) {
     if (!isNaN(value)) {
         target[propName] = value;
