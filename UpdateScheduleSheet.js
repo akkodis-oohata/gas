@@ -170,7 +170,7 @@ function addOneMonthCalenderMain() {
     // 更新したスケジュール表情報で画面更新
     updateScheduleSheetWithDataValuesC();
 
-    // 進行表のデータ内容を変更する。
+    // 進行表の割込みON列と前回算出増減のところのみ、データ内容を変更する
     updateProgressSheetWarikomiSceneLastChangeValues(progressSheet,progressSheetDataValues,progressSheetAllBackGrounds,psMaxScenesRow);
 
     //実行日と時間を前回置換実行日に記入する

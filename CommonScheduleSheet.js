@@ -198,6 +198,7 @@ function warikomiMoveCellC(
   // 移動幅・scene幅
   let countMove = 0;
   let countSceneMove = 0;
+  //割り込むシーンの設定
   for (let i = startColumnIndex; i < startColumnIndex + totalDays; i++) {
     //移動先セルが土日:ずらす値を+１、iをインクリメントせず土日でなくなるまでmovecをずらす
     while (
@@ -228,7 +229,7 @@ function warikomiMoveCellC(
   }
   // 移動幅にscene幅足しこみ
   countMove = countMove + countSceneMove;
-
+  //割り込まれて影響をうけるシーンの設定
   //選択開始列　から　一番最終列までループ（１行だけ指定と想定）
   for (let i = startColumnIndex; i < tmpRowBackGrounds.length; i++) {
     //該当セルが土日:ずらす値を-１、iをインクリメント
@@ -243,7 +244,7 @@ function warikomiMoveCellC(
       }
       continue;
     }
-    //移動先セルが土日:ずらす値を+１、iをインクリメントせず土日でなくなるまでmovecをずらす
+    //移動先セルが土日:ずらす値を+１、iをインクリメントせず土日でなくなるまでcountMoveをずらす
     while (
       tmpRowBackGrounds[i + countMove] == COLOR_HOLIDAY ||
       tmpRowStatusDataBaseSheetDataValues[i + countMove] === FIXED_CELL_KEYWORD
@@ -283,12 +284,12 @@ function setSellC(
 
 //先頭セルにシーン名を表示する
 function displaySceneNameC(rowIndex,maxDays) {
-  console.log("---displaySceneNameC---")
+  //console.log("---displaySceneNameC---")
   let prevSceneTitle = "";
   let sceneAndDay = {};  // シーン名と日数の対応を保持するオブジェクト
   for (
     let columnIndex = SS_CALENDERDATE_COLUMN_INDEX;
-    columnIndex < maxDays; //SS_CALENDERDATE_COLUMN_INDEX + maxDays;
+    columnIndex < maxDays; 
     columnIndex++
   ) {
     let sceneTitle = dataBaseSheetDataValues[rowIndex][columnIndex];
@@ -305,33 +306,13 @@ function displaySceneNameC(rowIndex,maxDays) {
       if (!sceneAndDay.hasOwnProperty(sceneTitleOnly)) {
         sceneAndDay[sceneTitleOnly] = 0;  // シーン名と日数の初期値をセットし、シーン名の追加
       }
-      // シーンがカバーする日数をカウント
-      // let columnCount = countSceneDays(
-      //   rowIndex,
-      //   columnIndex,
-      //   dataBaseSheetDataValues
-      // );
-      // // 値を追加
-      // sceneAndDay[sceneTitleOnly] = sceneAndDay[sceneTitleOnly] + columnCount;
-      // const number = extractDayNumberFromString(sceneTitle);
-      // if(sceneAndDay[sceneTitleOnly] >  number && number !== null){  //小数点分を切り上げてカウントしていて、.xx部分(小数点部分)を越した。numberが未登録の場合はカウントしたものを記載する。
-      //   columnCount = columnCount - 1 + extractDecimalPart(number)  //小数点部分のみを足すことで日分の小数点部分を再現
-      // }
-      // // シーン名と日数をスケジュールに注釈
-      // annotateSceneWithDays(
-      //   rowIndex,
-      //   columnIndex,
-      //   sceneTitleOnly,
-      //   columnCount,
-      //   scheduleSheetDataValues
-      // );
       
       // 作品名、シーン名のみスケジュール表に反映
       annotateSceneTitle(rowIndex, columnIndex, sceneTitleOnly, scheduleSheetDataValues)
     }
     prevSceneTitle = sceneTitleOnly;  // 前回のシーン名を更新
   }
-  console.log("---displaySceneNameC end---")
+  //console.log("---displaySceneNameC end---")
 
 }
 

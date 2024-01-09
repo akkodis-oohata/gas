@@ -49,6 +49,12 @@ function updateManHoursAllSheetMain() {
   const BORDER_DOTTED_END1 = 10;
   const BORDER_DOTTED_START2 = 13;
   const BORDER_DOTTED_END2 = 14;
+  // 条件付き書式位置
+  const FORMAT_RULE = 4;
+  const TEXT_COLOR_LO_STATUS_MAKIZUMI = "#cc0000"; //LO揃＆未撒きが0枚の状態のときに塗りつぶす文字色
+  const TEXT_COLOR_LO_STATUS_T1 = "#0000ff"; //納品Cut数と総工数が同じだったときに塗りつぶす文字色
+  const MAKIZUMI_KEYWORD = "撒済";
+  const T1_KEYWORD = "T1済";
 
   //-----------------
   //関数
@@ -73,7 +79,9 @@ function updateManHoursAllSheetMain() {
       MANHOUR_ALL_SHEET_NAME
     );
     if (!manhour_all_sheet) {
-      throw new Error('「' + MANHOUR_ALL_SHEET_NAME + '」シートが見つかりません');
+      throw new Error(
+        "「" + MANHOUR_ALL_SHEET_NAME + "」シートが見つかりません"
+      );
     }
 
     // 工数設定
@@ -129,7 +137,9 @@ function updateManHoursAllSheetMain() {
         return;
       }
       // コピー行範囲：B列（シーン名）データのヘッダ行以降のデータ最終行
-      const progressRowIndex = getPsSceneRowsIndex(progress_sheet.getDataRange());
+      const progressRowIndex = getPsSceneRowsIndex(
+        progress_sheet.getDataRange()
+      );
       // 進行表シーン名の最後の行
       let sceneEndBodyRowNum = progressRowIndex + 1;
       const progressRowRange =
@@ -295,5 +305,28 @@ function updateManHoursAllSheetMain() {
       1
     );
     boderDataRange.setFontColorObjects(pasteColor);
+
+    // 条件付き書式
+    const rules = [];
+    let formatRulesDataRange = manhour_all_sheet.getRange(
+      MANHOUR_ALL_START_ROW_NUM,
+      FORMAT_RULE,
+      pasteVal.length,
+      1
+    );
+    const rule1 = SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo(T1_KEYWORD)
+      .setFontColor(TEXT_COLOR_LO_STATUS_T1)
+      .setBold(true)
+      .setRanges([formatRulesDataRange])
+      .build();
+    rules.push(rule1);
+    const rule2 = SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo(MAKIZUMI_KEYWORD)
+      .setFontColor(TEXT_COLOR_LO_STATUS_MAKIZUMI)
+      .setRanges([formatRulesDataRange])
+      .build();
+    rules.push(rule2);
+    manhour_all_sheet.setConditionalFormatRules(rules);
   }
 }
